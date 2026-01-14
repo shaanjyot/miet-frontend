@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { FaTimes, FaUser, FaEnvelope, FaPhone, FaCreditCard, FaLock } from 'react-icons/fa';
+import { getBackendUrl } from '@/utils/api';
 
 interface PurchaseFormProps {
   course: {
@@ -141,7 +142,7 @@ export default function PurchaseForm({ course, onClose, onPurchase }: PurchaseFo
         }}>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <img
-              src={course.thumbnail ? `${process.env.NEXT_PUBLIC_BACKEND_URL}${course.thumbnail}` : '/intro.webp'}
+              src={course.thumbnail ? `${getBackendUrl()}${course.thumbnail}` : '/intro.webp'}
               alt={course.title}
               style={{
                 width: '80px',

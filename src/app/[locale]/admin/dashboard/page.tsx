@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 import Image from 'next/image';
 import { FaThLarge, FaList, FaTags, FaUserCircle, FaSignOutAlt, FaChevronLeft, FaChevronRight, FaUserMd, FaChevronDown, FaSearch, FaEdit, FaTrash, FaPlus, FaEye } from "react-icons/fa";
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
-import { getApiUrl } from "@/utils/api";
+import { getApiUrl, getBackendUrl } from "@/utils/api";
 import { useNotifications } from "@/components/NotificationSystem";
 
 interface Category {
@@ -524,7 +524,7 @@ export default function AdminDashboard() {
   // Fetch products
   async function fetchProducts() {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/products`);
+      const res = await fetch(getApiUrl('api/products'));
       if (res.ok) {
         const data = await res.json();
         console.log('Initial products fetch:', data);
@@ -760,7 +760,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem("admin_jwt");
       const method = consultantEditId ? "PUT" : "POST";
-      const url = consultantEditId ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/consultants/${consultantEditId}` : `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/consultants`;
+      const url = consultantEditId ? getApiUrl(`api/consultants/${consultantEditId}`) : getApiUrl('api/consultants');
 
       // Convert category_ids and subcategory_ids to number[] before submitting
       const payload = {
@@ -823,7 +823,7 @@ export default function AdminDashboard() {
       });
       // Fetch slots from backend
       const token = localStorage.getItem("admin_jwt");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/consultants/${c.id}/availability`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(getApiUrl(`api/consultants/${c.id}/availability`), { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) {
         const slots = await res.json();
         setConsultantSlots(slots.map((slot: { date: string; start_time: string; end_time: string; id: number }) => ({ date: slot.date, time: slot.start_time, endTime: slot.end_time })));
@@ -843,7 +843,7 @@ export default function AdminDashboard() {
   async function handleConsultantDelete() {
     if (!deleteConsultantId) return;
     const token = localStorage.getItem("admin_jwt");
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/consultants/${deleteConsultantId}`, {
+    const res = await fetch(getApiUrl(`api/consultants/${deleteConsultantId}`), {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -857,7 +857,7 @@ export default function AdminDashboard() {
   async function handleConsultantProfile(id?: number) {
     if (typeof id !== 'number') return;
     const token = localStorage.getItem("admin_jwt");
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/consultants/${id}`, {
+    const res = await fetch(getApiUrl(`api/consultants/${id}`), {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) setConsultantProfile(await res.json());
@@ -889,7 +889,7 @@ export default function AdminDashboard() {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/upload`, {
+      const res = await fetch(getApiUrl('api/upload'), {
         method: 'POST',
         body: formData,
       });
@@ -941,7 +941,7 @@ export default function AdminDashboard() {
   async function handleToggleConsultantStatus(c: Consultant) {
     const token = localStorage.getItem("admin_jwt");
     const newStatus = c.status === 'online' ? 'offline' : 'online';
-    await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/consultants/${c.id}/status`, {
+    await fetch(getApiUrl(`api/consultants/${c.id}/status`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ status: newStatus })
@@ -954,7 +954,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     const token = localStorage.getItem("admin_jwt");
     const method = userEditId ? "PUT" : "POST";
-    const url = userEditId ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/${userEditId}` : `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users`;
+    const url = userEditId ? getApiUrl(`api/users/${userEditId}`) : getApiUrl('api/users');
     const body = userEditId ? { username: userForm.username, role: userForm.role } : userForm;
     const res = await fetch(url, {
       method,
@@ -975,7 +975,7 @@ export default function AdminDashboard() {
   async function handleUserDelete(id: number) {
     if (!confirm("Delete this user?")) return;
     const token = localStorage.getItem("admin_jwt");
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/${id}`, {
+    const res = await fetch(getApiUrl(`api/users/${id}`), {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -992,7 +992,7 @@ export default function AdminDashboard() {
   async function handleToggleUserStatus(u: User) {
     const token = localStorage.getItem("admin_jwt");
     const newStatus = u.status === 'active' ? 'inactive' : 'active';
-    await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/${u.id}/status`, {
+    await fetch(getApiUrl(`api/users/${u.id}/status`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ status: newStatus })
@@ -1007,7 +1007,7 @@ export default function AdminDashboard() {
     setServiceFormMessage('');
     const token = localStorage.getItem('admin_jwt');
     const method = serviceEditId ? 'PUT' : 'POST';
-    const url = serviceEditId ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/services/${serviceEditId}` : `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/services`;
+    const url = serviceEditId ? getApiUrl(`api/services/${serviceEditId}`) : getApiUrl('api/services');
     try {
       const res = await fetch(url, {
         method,
@@ -1199,7 +1199,7 @@ export default function AdminDashboard() {
   // View service details
   async function handleServiceProfile(id: number) {
     const token = localStorage.getItem('admin_jwt');
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/services/${id}`, {
+    const res = await fetch(getApiUrl(`api/services/${id}`), {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) {
@@ -1218,7 +1218,7 @@ export default function AdminDashboard() {
   async function handleServiceDelete(id: number) {
     if (!confirm('Delete this service?')) return;
     const token = localStorage.getItem('admin_jwt');
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/services/${id}`, {
+    const res = await fetch(getApiUrl(`api/services/${id}`), {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -1233,7 +1233,7 @@ export default function AdminDashboard() {
     const data = { name: formName, email: formEmail };
     console.log('Form data to submit:', data);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/submit-form`, {
+      const res = await fetch(getApiUrl('submit-form'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -1329,7 +1329,7 @@ export default function AdminDashboard() {
   // Blog CRUD
   async function fetchBlogs() {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/blogs`);
+      const res = await fetch(getApiUrl('api/blogs'));
       if (res.ok) {
         const data = await res.json();
         console.log('Blogs fetched:', data);
@@ -1352,8 +1352,8 @@ export default function AdminDashboard() {
       const token = localStorage.getItem("admin_jwt");
       const method = blogEditId ? "PUT" : "POST";
       const url = blogEditId
-        ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/blogs/${blogEditId}`
-        : `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/blogs`;
+        ? getApiUrl(`api/blogs/${blogEditId}`)
+        : getApiUrl('api/blogs');
 
       const res = await fetch(url, {
         method,
@@ -1400,7 +1400,7 @@ export default function AdminDashboard() {
 
     try {
       const token = localStorage.getItem("admin_jwt");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/blogs/${deleteBlogId}`, {
+      const res = await fetch(getApiUrl(`api/blogs/${deleteBlogId}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -2041,7 +2041,7 @@ export default function AdminDashboard() {
             font-size: 14px !important;
             transition: all 0.3s ease !important;
         }
-        
+
         input:focus, textarea:focus, select:focus {
             border-color: #667eea !important;
             background-color: #1e293b !important;
@@ -2923,7 +2923,7 @@ export default function AdminDashboard() {
                     render: (value, row) => (
                       value ? (
                         <Image
-                          src={`${process.env.NEXT_PUBLIC_BACKEND_URL}${value}`}
+                          src={`${getBackendUrl()}${value}`}
                           alt={row.name}
                           width={44}
                           height={44}
@@ -3617,7 +3617,7 @@ export default function AdminDashboard() {
                       />
                       {consultantForm.image && (
                         <Image
-                          src={`${process.env.NEXT_PUBLIC_BACKEND_URL}${consultantForm.image}`}
+                          src={`${getBackendUrl()}${consultantForm.image}`}
                           alt="Consultant"
                           width={80}
                           height={80}
@@ -3643,7 +3643,7 @@ export default function AdminDashboard() {
                       />
                       {consultantForm.id_proof_url && (
                         <a
-                          href={`${process.env.NEXT_PUBLIC_BACKEND_URL}${consultantForm.id_proof_url}`}
+                          href={`${getBackendUrl()}${consultantForm.id_proof_url}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{
@@ -5084,7 +5084,7 @@ export default function AdminDashboard() {
                     render: (value, row) => {
                       const imgPath = value || row.product_image || row.icon || row.image_url;
                       if (imgPath) {
-                        const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/$/, '');
+                        const baseUrl = getBackendUrl();
                         const fullUrl = imgPath.startsWith('http') ? imgPath : `${baseUrl}${imgPath.startsWith('/') ? imgPath : '/' + imgPath}`;
                         return (
                           <img
@@ -5317,15 +5317,13 @@ export default function AdminDashboard() {
                             formData.append('download_link', productForm.download_link || '');
                             if (productForm.iconFile) formData.append('icon', productForm.iconFile);
                           }
-                          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-                          console.log('Backend URL:', backendUrl);
                           console.log('FormData contents:', Array.from(formData.entries()));
                           console.log('Product form state:', productForm);
 
                           // Try both FormData and JSON to see which works
                           const url = productEditId
-                            ? `${backendUrl}/api/products/${productEditId}`
-                            : `${backendUrl}/api/products`;
+                            ? getApiUrl(`api/products/${productEditId}`)
+                            : getApiUrl('api/products');
                           const method = productEditId ? 'PUT' : 'POST';
 
                           const response = await fetch(url, {
@@ -5342,7 +5340,7 @@ export default function AdminDashboard() {
                           setSuccessMessage(productEditId ? 'Product updated successfully!' : 'Product added successfully!');
                           setShowSuccessPopup(true);
                           // Re-fetch products after successful add
-                          const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/products`);
+                          const res = await fetch(getApiUrl('api/products'));
                           const data = await res.json();
                           console.log('Fetched products data:', data);
                           console.log('Products data type:', typeof data);
@@ -6222,7 +6220,7 @@ export default function AdminDashboard() {
                     render: (value) => (
                       value ? (
                         <img
-                          src={`${process.env.NEXT_PUBLIC_BACKEND_URL}${value}`}
+                          src={`${getBackendUrl()}${value}`}
                           alt="Thumbnail"
                           style={{
                             width: 50,
@@ -8124,7 +8122,7 @@ export default function AdminDashboard() {
                     // Handle product deletion
                     try {
                       // Try backend delete first
-                      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/products/${deleteProductId}`, {
+                      const response = await fetch(getApiUrl(`api/products/${deleteProductId}`), {
                         method: 'DELETE'
                       });
 
