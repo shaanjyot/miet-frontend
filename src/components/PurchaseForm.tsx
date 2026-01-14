@@ -1,7 +1,6 @@
 'use client';
 import React, { useState } from 'react';
 import { FaTimes, FaUser, FaEnvelope, FaPhone, FaCreditCard, FaLock } from 'react-icons/fa';
-import { getBackendUrl } from '@/utils/api';
 
 interface PurchaseFormProps {
   course: {
@@ -42,7 +41,7 @@ export default function PurchaseForm({ course, onClose, onPurchase }: PurchaseFo
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Clear error when user starts typing
     if (errors[name as keyof PurchaseFormData]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -56,7 +55,7 @@ export default function PurchaseForm({ course, onClose, onPurchase }: PurchaseFo
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.email.trim()) newErrors.email = 'Email is required';
     else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid';
-    
+
     if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
     if (!formData.cardNumber.trim()) newErrors.cardNumber = 'Card number is required';
     if (!formData.expiryDate.trim()) newErrors.expiryDate = 'Expiry date is required';
@@ -69,7 +68,7 @@ export default function PurchaseForm({ course, onClose, onPurchase }: PurchaseFo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (validateForm()) {
       onPurchase(formData);
     }
@@ -77,11 +76,11 @@ export default function PurchaseForm({ course, onClose, onPurchase }: PurchaseFo
 
   const getPriceDisplay = (price: string | number | undefined) => {
     if (!price || price === '0' || price === 0) return 'Free';
-    
+
     const priceStr = String(price);
     if (priceStr.startsWith('$')) return priceStr;
     if (priceStr.toLowerCase() === 'free') return 'Free';
-    
+
     return `$${priceStr}`;
   };
 
@@ -142,7 +141,7 @@ export default function PurchaseForm({ course, onClose, onPurchase }: PurchaseFo
         }}>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <img
-              src={course.thumbnail ? `${getBackendUrl()}${course.thumbnail}` : '/intro.webp'}
+              src={course.thumbnail ? `${process.env.NEXT_PUBLIC_BACKEND_URL}${course.thumbnail}` : '/intro.webp'}
               alt={course.title}
               style={{
                 width: '80px',
@@ -313,7 +312,7 @@ export default function PurchaseForm({ course, onClose, onPurchase }: PurchaseFo
             <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#1f2937', marginBottom: '1rem' }}>
               Payment Information
             </h3>
-            
+
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500', color: '#374151' }}>
                 Card Number *

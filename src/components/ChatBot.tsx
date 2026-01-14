@@ -4,7 +4,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaRobot, FaPaperPlane, FaTimes, FaCommentAlt } from 'react-icons/fa';
 import styles from './ChatBot.module.css';
-import { getApiUrl } from '@/utils/api';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -60,12 +59,14 @@ export const ChatBot: React.FC = () => {
 
         try {
             const token = typeof window !== 'undefined' ? localStorage.getItem('user_jwt') : null;
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+
             // Filter out the initial greeting for the API if it's the first message and from assistant
             const apiMessages = currentMessages.length > 1 && currentMessages[0].role === 'assistant'
                 ? currentMessages.slice(1)
                 : currentMessages;
 
-            const response = await fetch(getApiUrl('api/chat'), {
+            const response = await fetch(`${backendUrl}/api/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

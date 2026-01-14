@@ -6,7 +6,6 @@ import Footer from '@/components/Footer';
 import RazorpayPayment from '@/components/RazorpayPayment';
 import { useCart } from '@/components/CartContext';
 import { useCurrency } from '@/components/CurrencyContext';
-import { getBackendUrl } from '@/utils/api';
 
 interface CartItem {
   id: string | number;
@@ -47,8 +46,8 @@ export default function CartPage() {
   const getProductImage = (thumbnail: string | undefined) => {
     if (!thumbnail) return '/intro.webp';
     if (thumbnail.startsWith('http') || thumbnail.startsWith('data:')) return thumbnail;
-    const baseUrl = getBackendUrl();
-    return `${baseUrl}${thumbnail.startsWith('/') ? thumbnail : `/${thumbnail}`}`;
+    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+    return `${baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl}${thumbnail.startsWith('/') ? thumbnail : `/${thumbnail}`}`;
   };
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>('auth');
   const [userDetails, setUserDetails] = useState<UserDetails>({

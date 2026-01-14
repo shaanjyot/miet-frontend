@@ -6,7 +6,7 @@ import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
 import GoogleAuth from "@/components/GoogleAuth";
 import { useNotifications } from "@/components/NotificationSystem";
-import { getApiUrl, getBackendUrl } from "@/utils/api";
+import { getApiUrl } from "@/utils/api";
 import { FaCalendarAlt, FaUserMd } from "react-icons/fa";
 
 type Consultant = {
@@ -232,8 +232,8 @@ export default function ConsultantDetailPage() {
                   <img
                     src={
                       consultant.image.startsWith('/')
-                        ? `${getBackendUrl()}${consultant.image}`
-                        : `${getBackendUrl()}/uploads/${consultant.image}`
+                        ? `${process.env.NEXT_PUBLIC_BACKEND_URL}${consultant.image}`
+                        : `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/${consultant.image}`
                     }
                     alt={consultant.name}
                     style={{

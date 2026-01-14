@@ -1,10 +1,11 @@
 // API utility functions for Razorpay integration
-import { getApiUrl } from './api';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
 
 export const razorpayAPI = {
   // Get Razorpay key ID
   async getKeyId() {
-    const response = await fetch(getApiUrl('api/razorpay/key'));
+    const response = await fetch(`${API_BASE_URL}/api/razorpay/key`);
     const data = await response.json();
     return data;
   },
@@ -13,7 +14,7 @@ export const razorpayAPI = {
   async createOrder(amount: number, currency: string = 'INR', receipt?: string) {
     const token = localStorage.getItem('user_jwt') || sessionStorage.getItem('user_jwt');
 
-    const response = await fetch(getApiUrl('api/razorpay/create-order'), {
+    const response = await fetch(`${API_BASE_URL}/api/razorpay/create-order`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -34,7 +35,7 @@ export const razorpayAPI = {
   async verifyPayment(razorpayOrderId: string, razorpayPaymentId: string, razorpaySignature: string) {
     const token = localStorage.getItem('user_jwt') || sessionStorage.getItem('user_jwt');
 
-    const response = await fetch(getApiUrl('api/razorpay/verify-payment'), {
+    const response = await fetch(`${API_BASE_URL}/api/razorpay/verify-payment`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -379,7 +379,7 @@ export default function SearchPanel() {
   // Update placeholder when translation changes
   useEffect(() => {
     // Only update if it hasn't been changed by voice search (simple heuristic: if it matches the key's previous value or is default)
-    // To keep it simple and safe as per instructions "dont change logic", we just set it initially. 
+    // To keep it simple and safe as per instructions "dont change logic", we just set it initially.
     // But for languge switch to work on the placeholder if user hasn't typed, we might want to sync it.
     // However, let's stick to the simplest replacement first.
   }, []);
@@ -640,10 +640,15 @@ export default function SearchPanel() {
                     const fetchConsultants = async () => {
                       setLoading(true);
                       try {
+                        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+                        if (!backendUrl) {
+                          throw new Error('Backend URL not configured');
+                        }
+
                         const controller = new AbortController();
                         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-                        const res = await fetch(getApiUrl('api/consultants/public'), {
+                        const res = await fetch(`${backendUrl}/api/consultants/public`, {
                           signal: controller.signal,
                           headers: {
                             'Content-Type': 'application/json',
@@ -742,7 +747,7 @@ export default function SearchPanel() {
               // Determine the correct image URL
               let imageUrl = c.image;
               if (imageUrl && imageUrl.startsWith('/')) {
-                imageUrl = `${getBackendUrl()}${imageUrl}`;
+                imageUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}${imageUrl}`;
               }
               return (
                 <div
@@ -1147,7 +1152,7 @@ export default function SearchPanel() {
                     try {
                       let imageUrl = c.image;
                       if (imageUrl && imageUrl.startsWith('/')) {
-                        imageUrl = `${getBackendUrl()}${imageUrl}`;
+                        imageUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}${imageUrl}`;
                       }
                       markerIcon = {
                         url: imageUrl,
@@ -1223,7 +1228,7 @@ export default function SearchPanel() {
                                 src={(() => {
                                   let imageUrl = selectedConsultant.image;
                                   if (imageUrl && imageUrl.startsWith('/')) {
-                                    imageUrl = `${getBackendUrl()}${imageUrl}`;
+                                    imageUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}${imageUrl}`;
                                   }
                                   return imageUrl || '/brain-miet.png';
                                 })()}
@@ -1579,7 +1584,7 @@ export default function SearchPanel() {
           // Determine the correct image URL for the modal
           let imageUrl = bookingConsultant.image;
           if (imageUrl && imageUrl.startsWith('/')) {
-            imageUrl = `${getBackendUrl()}${imageUrl}`;
+            imageUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}${imageUrl}`;
           }
           return (
             <div role="dialog" aria-modal="true" tabIndex={-1} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(34,37,77,0.32)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={e => { if (e.target === e.currentTarget) setBookingConsultant(null); }}>

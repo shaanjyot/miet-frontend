@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 import Image from 'next/image';
 import { FaThLarge, FaList, FaTags, FaUserCircle, FaSignOutAlt, FaChevronLeft, FaChevronRight, FaUserMd, FaChevronDown, FaSearch, FaEdit, FaTrash, FaPlus, FaEye } from "react-icons/fa";
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
-import { getApiUrl, getBackendUrl } from "@/utils/api";
+import { getApiUrl } from "@/utils/api";
 import { useNotifications } from "@/components/NotificationSystem";
 
 interface Category {
@@ -760,7 +760,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem("admin_jwt");
       const method = consultantEditId ? "PUT" : "POST";
-      const url = consultantEditId ? getApiUrl(`api/consultants/${consultantEditId}`) : getApiUrl('api/consultants');
+      const url = consultantEditId ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/consultants/${consultantEditId}` : `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/consultants`;
 
       // Convert category_ids and subcategory_ids to number[] before submitting
       const payload = {
@@ -954,7 +954,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     const token = localStorage.getItem("admin_jwt");
     const method = userEditId ? "PUT" : "POST";
-    const url = userEditId ? getApiUrl(`api/users/${userEditId}`) : getApiUrl('api/users');
+    const url = userEditId ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/${userEditId}` : `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users`;
     const body = userEditId ? { username: userForm.username, role: userForm.role } : userForm;
     const res = await fetch(url, {
       method,
@@ -1007,7 +1007,7 @@ export default function AdminDashboard() {
     setServiceFormMessage('');
     const token = localStorage.getItem('admin_jwt');
     const method = serviceEditId ? 'PUT' : 'POST';
-    const url = serviceEditId ? getApiUrl(`api/services/${serviceEditId}`) : getApiUrl('api/services');
+    const url = serviceEditId ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/services/${serviceEditId}` : `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/services`;
     try {
       const res = await fetch(url, {
         method,
@@ -1352,8 +1352,8 @@ export default function AdminDashboard() {
       const token = localStorage.getItem("admin_jwt");
       const method = blogEditId ? "PUT" : "POST";
       const url = blogEditId
-        ? getApiUrl(`api/blogs/${blogEditId}`)
-        : getApiUrl('api/blogs');
+        ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/blogs/${blogEditId}`
+        : `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/blogs`;
 
       const res = await fetch(url, {
         method,
@@ -2923,7 +2923,7 @@ export default function AdminDashboard() {
                     render: (value, row) => (
                       value ? (
                         <Image
-                          src={`${getBackendUrl()}${value}`}
+                          src={`${process.env.NEXT_PUBLIC_BACKEND_URL}${value}`}
                           alt={row.name}
                           width={44}
                           height={44}
@@ -3617,7 +3617,7 @@ export default function AdminDashboard() {
                       />
                       {consultantForm.image && (
                         <Image
-                          src={`${getBackendUrl()}${consultantForm.image}`}
+                          src={`${process.env.NEXT_PUBLIC_BACKEND_URL}${consultantForm.image}`}
                           alt="Consultant"
                           width={80}
                           height={80}
@@ -3643,7 +3643,7 @@ export default function AdminDashboard() {
                       />
                       {consultantForm.id_proof_url && (
                         <a
-                          href={`${getBackendUrl()}${consultantForm.id_proof_url}`}
+                          href={`${process.env.NEXT_PUBLIC_BACKEND_URL}${consultantForm.id_proof_url}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{
@@ -5084,7 +5084,7 @@ export default function AdminDashboard() {
                     render: (value, row) => {
                       const imgPath = value || row.product_image || row.icon || row.image_url;
                       if (imgPath) {
-                        const baseUrl = getBackendUrl();
+                        const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/$/, '');
                         const fullUrl = imgPath.startsWith('http') ? imgPath : `${baseUrl}${imgPath.startsWith('/') ? imgPath : '/' + imgPath}`;
                         return (
                           <img
@@ -5317,13 +5317,15 @@ export default function AdminDashboard() {
                             formData.append('download_link', productForm.download_link || '');
                             if (productForm.iconFile) formData.append('icon', productForm.iconFile);
                           }
+                          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+                          console.log('Backend URL:', backendUrl);
                           console.log('FormData contents:', Array.from(formData.entries()));
                           console.log('Product form state:', productForm);
 
                           // Try both FormData and JSON to see which works
                           const url = productEditId
-                            ? getApiUrl(`api/products/${productEditId}`)
-                            : getApiUrl('api/products');
+                            ? `${backendUrl}/api/products/${productEditId}`
+                            : `${backendUrl}/api/products`;
                           const method = productEditId ? 'PUT' : 'POST';
 
                           const response = await fetch(url, {
@@ -6220,7 +6222,7 @@ export default function AdminDashboard() {
                     render: (value) => (
                       value ? (
                         <img
-                          src={`${getBackendUrl()}${value}`}
+                          src={`${process.env.NEXT_PUBLIC_BACKEND_URL}${value}`}
                           alt="Thumbnail"
                           style={{
                             width: 50,
