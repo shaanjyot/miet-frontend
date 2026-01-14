@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLocale } from 'next-intl';
 import GoogleAuth from '@/components/GoogleAuth';
 import { useNotifications } from '@/components/NotificationSystem';
 import { getApiUrl } from '@/utils/api';
@@ -83,6 +84,7 @@ export default function ConsultationsPage() {
     user_phone: ''
   });
   const router = useRouter();
+  const locale = useLocale();
   const { addNotification } = useNotifications();
 
   // Check authentication status on component mount
@@ -325,7 +327,7 @@ export default function ConsultationsPage() {
     setAppointmentData(null);
 
     // Redirect to dashboard
-    router.push('/dashboard');
+    router.push(`/${locale}/dashboard`);
   };
 
   const handlePaymentFailure = (error: any) => {

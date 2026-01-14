@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLocale } from 'next-intl';
 import { useNotifications } from './NotificationSystem';
 import { getApiUrl } from '@/utils/api';
 
@@ -23,6 +24,7 @@ export const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, child
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const locale = useLocale();
   const { addNotification } = useNotifications();
 
   useEffect(() => {
@@ -117,7 +119,7 @@ export const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, child
         // Wait for auth check to complete before redirecting
         await checkAuthStatus();
         // Redirect to dashboard after successful login
-        router.push('/dashboard');
+        router.push(`/${locale}/dashboard`);
       } else if (error) {
         addNotification({
           type: 'error',
@@ -165,7 +167,7 @@ export const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, child
               borderRadius: '8px',
               transition: 'all 0.3s ease'
             }}
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push(`/${locale}/dashboard`)}
             onMouseOver={(e) => {
               e.currentTarget.style.backgroundColor = 'rgba(102, 126, 234, 0.1)';
               e.currentTarget.style.transform = 'translateY(-1px)';

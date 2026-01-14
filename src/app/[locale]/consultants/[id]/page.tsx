@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useLocale } from "next-intl";
 import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
 import GoogleAuth from "@/components/GoogleAuth";
@@ -29,6 +30,7 @@ type Consultant = {
 export default function ConsultantDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const locale = useLocale();
   const [consultant, setConsultant] = useState<Consultant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -100,7 +102,7 @@ export default function ConsultantDetailPage() {
   const handleBookClick = () => {
     if (user) {
       // User is logged in, redirect to dashboard
-      router.push('/dashboard');
+      router.push(`/${locale}/dashboard`);
     } else {
       // User not logged in, show login modal
       setShowLoginModal(true);
@@ -111,7 +113,7 @@ export default function ConsultantDetailPage() {
     setUser(userData);
     setShowLoginModal(false);
     // Redirect to dashboard after successful login
-    router.push('/dashboard');
+    router.push(`/${locale}/dashboard`);
   };
 
   const handleLoginModalClose = () => {
