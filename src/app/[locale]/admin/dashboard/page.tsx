@@ -760,7 +760,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem("admin_jwt");
       const method = consultantEditId ? "PUT" : "POST";
-      const url = consultantEditId ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/consultants/${consultantEditId}` : `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/consultants`;
+      const url = consultantEditId ? getApiUrl(`api/consultants/${consultantEditId}`) : getApiUrl('api/consultants');
 
       // Convert category_ids and subcategory_ids to number[] before submitting
       const payload = {
@@ -954,7 +954,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     const token = localStorage.getItem("admin_jwt");
     const method = userEditId ? "PUT" : "POST";
-    const url = userEditId ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users/${userEditId}` : `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/users`;
+    const url = userEditId ? getApiUrl(`api/users/${userEditId}`) : getApiUrl('api/users');
     const body = userEditId ? { username: userForm.username, role: userForm.role } : userForm;
     const res = await fetch(url, {
       method,
@@ -1007,7 +1007,7 @@ export default function AdminDashboard() {
     setServiceFormMessage('');
     const token = localStorage.getItem('admin_jwt');
     const method = serviceEditId ? 'PUT' : 'POST';
-    const url = serviceEditId ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/services/${serviceEditId}` : `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/services`;
+    const url = serviceEditId ? getApiUrl(`api/services/${serviceEditId}`) : getApiUrl('api/services');
     try {
       const res = await fetch(url, {
         method,
@@ -1352,8 +1352,8 @@ export default function AdminDashboard() {
       const token = localStorage.getItem("admin_jwt");
       const method = blogEditId ? "PUT" : "POST";
       const url = blogEditId
-        ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/blogs/${blogEditId}`
-        : `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/blogs`;
+        ? getApiUrl(`api/blogs/${blogEditId}`)
+        : getApiUrl('api/blogs');
 
       const res = await fetch(url, {
         method,
