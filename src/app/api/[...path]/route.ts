@@ -7,10 +7,15 @@ const getBackendUrl = () => BACKEND_URL.replace(/\/$/, '');
 
 async function proxyRequest(request: NextRequest, path: string[]) {
   const backendUrl = getBackendUrl();
+  // The path array doesn't include 'api' prefix since the route is under /api/
+  // We need to add it back for the backend URL
   const targetPath = path.join('/');
   const url = new URL(request.url);
   const searchParams = url.searchParams.toString();
-  const targetUrl = `${backendUrl}/${targetPath}${searchParams ? `?${searchParams}` : ''}`;
+  // Add /api/ prefix to match backend routes
+  const targetUrl = `${backendUrl}/api/${targetPath}${searchParams ? `?${searchParams}` : ''}`;
+
+  console.log(`[API Proxy] ${request.method} ${request.url} -> ${targetUrl}`);
 
   // Forward headers, excluding host-specific ones
   const headers = new Headers();
@@ -23,11 +28,11 @@ async function proxyRequest(request: NextRequest, path: string[]) {
 
   try {
     let body: BodyInit | null = null;
-    
+
     // Handle body for non-GET/HEAD requests
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       const contentType = request.headers.get('content-type') || '';
-      
+
       if (contentType.includes('multipart/form-data')) {
         // For file uploads, pass through the FormData
         body = await request.formData();
@@ -49,7 +54,7 @@ async function proxyRequest(request: NextRequest, path: string[]) {
     // Get response data
     const contentType = response.headers.get('content-type') || '';
     let responseBody: ArrayBuffer | string;
-    
+
     if (contentType.includes('application/json')) {
       responseBody = await response.text();
     } else {
@@ -71,9 +76,16 @@ async function proxyRequest(request: NextRequest, path: string[]) {
       headers: responseHeaders,
     });
   } catch (error) {
-    console.error('Proxy error:', error);
+    console.error('[API Proxy] Error:', error);
+    console.error('[API Proxy] Backend URL:', backendUrl);
+    console.error('[API Proxy] Target URL:', targetUrl);
     return NextResponse.json(
-      { error: 'Failed to proxy request to backend', details: String(error) },
+      {
+        error: 'Failed to proxy request to backend',
+        details: String(error),
+        backendUrl: backendUrl,
+        targetUrl: targetUrl
+      },
       { status: 502 }
     );
   }
@@ -112,6 +124,14 @@ export async function DELETE(
 }
 
 export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+) {
+  const { path } = await params;
+  return proxyRequest(request, path);
+}
+
+export async function OPTIONS(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
