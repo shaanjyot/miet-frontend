@@ -47,7 +47,7 @@ export default function ConsultantDetailPage() {
 
       try {
         // Fetch all consultants and find the one we need
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/consultants/public`);
+        const res = await fetch(getApiUrl('api/consultants/public'));
 
         if (!res.ok) {
           throw new Error("Failed to fetch consultants");

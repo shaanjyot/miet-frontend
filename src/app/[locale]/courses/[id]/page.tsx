@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useCart } from '@/components/CartContext';
 import { useLocale } from 'next-intl';
 import { useCurrency } from '@/components/CurrencyContext';
+import { getApiUrl, getBackendUrl } from '@/utils/api';
 
 interface Course {
   id: string | number;
@@ -73,7 +74,7 @@ export default function CourseDetailPage({ params }: { params: any }) {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/products`);
+      const response = await fetch(getApiUrl('api/products'));
       if (response.ok) {
         const data = await response.json();
         const productsArray = data.products || data;
@@ -145,7 +146,7 @@ export default function CourseDetailPage({ params }: { params: any }) {
     const imgPath = course.thumbnail || (course as any).product_image || (course as any).icon || (course as any).image_url;
     if (!imgPath) return '/intro.webp';
     if (imgPath.startsWith('http')) return imgPath;
-    const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/$/, '');
+    const baseUrl = getBackendUrl();
     const cleanImgPath = imgPath.startsWith('/') ? imgPath : `/${imgPath}`;
     return `${baseUrl}${cleanImgPath}`;
   };
@@ -162,7 +163,7 @@ export default function CourseDetailPage({ params }: { params: any }) {
   const getInstructorImage = (course: Course) => {
     if (!course.instructor_image) return '/founder.webp';
     if (course.instructor_image.startsWith('http')) return course.instructor_image;
-    const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/$/, '');
+    const baseUrl = getBackendUrl();
     const cleanPath = course.instructor_image.startsWith('/') ? course.instructor_image : `/${course.instructor_image}`;
     return `${baseUrl}${cleanPath}`;
   };

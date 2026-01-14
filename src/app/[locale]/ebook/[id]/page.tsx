@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useCart } from '@/components/CartContext';
 import { useLocale } from 'next-intl';
 import { useCurrency } from '@/components/CurrencyContext';
+import { getApiUrl, getBackendUrl } from '@/utils/api';
 
 interface EBook {
     id: string | number;
@@ -51,7 +52,7 @@ export default function EBookDetailPage({ params }: { params: any }) {
         try {
             setLoading(true);
             setError(null);
-            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/products`);
+            const response = await fetch(getApiUrl('api/products'));
             if (response.ok) {
                 const data = await response.json();
                 const productsArray = data.products || data;
@@ -76,7 +77,7 @@ export default function EBookDetailPage({ params }: { params: any }) {
         const imgPath = item.thumbnail || (item as any).product_image || (item as any).icon || (item as any).image_url;
         if (!imgPath) return '/intro.webp';
         if (imgPath.startsWith('http')) return imgPath;
-        const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/$/, '');
+        const baseUrl = getBackendUrl();
         const cleanImgPath = imgPath.startsWith('/') ? imgPath : `/${imgPath}`;
         return `${baseUrl}${cleanImgPath}`;
     };

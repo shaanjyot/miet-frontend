@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { FaCreditCard, FaSpinner, FaCalendarAlt, FaUser, FaClock } from 'react-icons/fa';
 import razorpayAPI from '../utils/razorpayAPI';
+import { getApiUrl } from '@/utils/api';
 
 interface AppointmentPaymentProps {
   appointmentData: {
@@ -81,7 +82,7 @@ export default function AppointmentPayment({
 
   const confirmPayment = async (razorpayOrderId: string, razorpayPaymentId: string, razorpaySignature: string) => {
     const token = localStorage.getItem('user_jwt');
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/appointments/confirm-payment`, {
+    const response = await fetch(getApiUrl('api/appointments/confirm-payment'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

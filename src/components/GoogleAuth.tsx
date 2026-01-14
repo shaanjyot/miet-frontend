@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useNotifications } from './NotificationSystem';
+import { getApiUrl } from '@/utils/api';
 
 interface User {
   id: number;
@@ -36,7 +37,7 @@ export const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, child
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/profile`, {
+      const response = await fetch(getApiUrl('api/auth/profile'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -62,7 +63,7 @@ export const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, child
   const handleGoogleLogin = async () => {
     try {
       // First, get the auth URL from the backend
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/google`);
+      const response = await fetch(getApiUrl('api/auth/google'));
       const data = await response.json();
 
       if (data.authUrl) {

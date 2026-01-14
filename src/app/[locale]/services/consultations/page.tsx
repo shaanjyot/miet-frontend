@@ -98,7 +98,7 @@ export default function ConsultationsPage() {
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/auth/profile`, {
+      const response = await fetch(getApiUrl('api/auth/profile'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }

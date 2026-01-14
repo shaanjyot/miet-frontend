@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
 import { FaMicrophone } from 'react-icons/fa';
 import { GoogleAuth } from './GoogleAuth';
+import { getApiUrl, getBackendUrl } from '@/utils/api';
 
 type Consultant = {
   id: number;
@@ -128,7 +129,7 @@ export default function SearchPanel() {
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/profile`, {
+      const response = await fetch(getApiUrl('api/auth/profile'), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -184,13 +185,10 @@ export default function SearchPanel() {
       setLoading(true);
       setError(null);
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-        if (!backendUrl) throw new Error('Backend URL not configured');
-
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        const res = await fetch(`${backendUrl}/api/consultants/public`, {
+        const res = await fetch(getApiUrl('api/consultants/public'), {
           signal: controller.signal,
           headers: { 'Content-Type': 'application/json' }
         });

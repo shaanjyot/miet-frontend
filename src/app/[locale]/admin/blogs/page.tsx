@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 import Footer from '@/components/Footer';
 import { FaThLarge, FaList, FaTags, FaUserCircle, FaSignOutAlt, FaChevronLeft, FaChevronRight, FaUserMd, FaChevronDown } from "react-icons/fa";
+import { getApiUrl } from '@/utils/api';
 
 interface Blog {
   id?: number;
@@ -58,7 +59,7 @@ export default function BlogsPage() {
   async function fetchBlogs() {
     try {
       setLoading(true);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/blogs`);
+      const res = await fetch(getApiUrl('api/blogs'));
       if (res.ok) {
         const data = await res.json();
         console.log('Blogs fetched:', data);
@@ -83,8 +84,8 @@ export default function BlogsPage() {
       const token = localStorage.getItem("admin_jwt");
       const method = blogEditId ? "PUT" : "POST";
       const url = blogEditId
-        ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/blogs/${blogEditId}`
-        : `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/blogs`;
+        ? getApiUrl(`api/blogs/${blogEditId}`)
+        : getApiUrl('api/blogs');
 
       let res: Response;
 
@@ -176,7 +177,7 @@ export default function BlogsPage() {
 
     try {
       const token = localStorage.getItem("admin_jwt");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/blogs/${deleteBlogId}`, {
+      const res = await fetch(getApiUrl(`api/blogs/${deleteBlogId}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
