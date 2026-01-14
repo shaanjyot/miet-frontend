@@ -9,6 +9,7 @@ import TopBar from '@/components/TopBar';
 import Footer from '@/components/Footer';
 import Image from 'next/image';
 import { useCart } from '@/components/CartContext';
+import { getApiUrl, getBackendUrl } from '@/utils/api';
 
 interface Product {
   id: number;
@@ -52,18 +53,14 @@ export default function CategoryPage({ params }: { params: { category: string } 
       setLoading(true);
 
       // Debug environment variable
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-      console.log(`🔧 ${category} Category - Backend URL:`, backendUrl);
-
-      if (!backendUrl) {
-        throw new Error('Backend URL not configured. Please check your environment variables.');
-      }
+      const apiUrl = getApiUrl('api/products');
+      console.log(`🔧 ${category} Category - API URL:`, apiUrl);
 
       // Fetch products with timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      const response = await fetch(`${backendUrl}/api/products`, {
+      const response = await fetch(apiUrl, {
         signal: controller.signal
       });
 
@@ -127,7 +124,7 @@ export default function CategoryPage({ params }: { params: { category: string } 
     }
 
     // Otherwise, construct the full URL from the backend URL
-    const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || '').replace(/\/$/, '');
+    const baseUrl = getBackendUrl();
     const cleanPath = imgPath.startsWith('/') ? imgPath : `/${imgPath}`;
     return `${baseUrl}${cleanPath}`;
   };
