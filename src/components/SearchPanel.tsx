@@ -68,8 +68,8 @@ export default function SearchPanel() {
   const [pendingBookingConsultant, setPendingBookingConsultant] = useState<Consultant | null>(null);
   const [mapHeight, setMapHeight] = useState(500);
 
-  // Get API key from environment or use fallback
-  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyAmpa3H1449VHQeOA7cJ1h1fp5WUu5d4pM';
+  // Get API key from environment
+  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!;
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || undefined;
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -168,7 +168,6 @@ export default function SearchPanel() {
   // Helper to fetch address from lat/lng
   const fetchAddress = useCallback(async (id: number, lat: string, lng: string) => {
     try {
-      if (!googleMapsApiKey) return;
       const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleMapsApiKey}`;
       const res = await fetch(url);
       const data = await res.json();
@@ -314,10 +313,6 @@ export default function SearchPanel() {
       setCityLoading(true);
       const fetchCity = async () => {
         try {
-          if (!googleMapsApiKey) {
-            setCity('Your Area');
-            return;
-          }
           const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${userLocation.lat},${userLocation.lng}&key=${googleMapsApiKey}`;
           const res = await fetch(url);
           const data = await res.json();
