@@ -43,11 +43,8 @@ export default function CoursesPage() {
       setLoading(true);
       setError(null);
 
-      // Debug environment variable
-      const apiUrl = getApiUrl('api/products');
-      ('🔧 API URL:', apiUrl);
-
       // Fetch courses from backend API with timeout
+      const apiUrl = getApiUrl('api/products');
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 

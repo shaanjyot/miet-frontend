@@ -50,16 +50,6 @@ export default function ConsultantsPage() {
       if (!res.ok) throw new Error("Failed to fetch consultants");
       const data = await res.json();
 
-        if (firstIndex !== index) {
-          acc.push(consultant.id);
-        }
-        return acc;
-      }, []);
-
-      if (duplicateIds.length > 0) {
-
-      }
-
       // Remove duplicates by ID (keep only the first occurrence)
       const uniqueConsultants = Array.from(
         new Map(data.map((c: Consultant) => [c.id, c])).values()
