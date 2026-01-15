@@ -47,7 +47,6 @@ export const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, child
 
       if (response.ok) {
         const userData = await response.json();
-        console.log('User data received:', userData);
         const user = userData.user || userData;
         setUser(user);
         onLogin?.(user);
@@ -55,7 +54,6 @@ export const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, child
         localStorage.removeItem('user_jwt');
       }
     } catch (error) {
-      console.error('Error checking auth status:', error);
       localStorage.removeItem('user_jwt');
     } finally {
       setLoading(false);
@@ -79,7 +77,6 @@ export const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, child
         });
       }
     } catch (error) {
-      console.error('Error initiating Google login:', error);
       addNotification({
         type: 'error',
         title: 'Login Failed',

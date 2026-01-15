@@ -15,8 +15,6 @@ async function proxyRequest(request: NextRequest, path: string[]) {
   // Add /api/ prefix to match backend routes
   const targetUrl = `${backendUrl}/api/${targetPath}${searchParams ? `?${searchParams}` : ''}`;
 
-  console.log(`[API Proxy] ${request.method} ${request.url} -> ${targetUrl}`);
-
   // Forward headers, excluding host-specific ones
   const headers = new Headers();
   request.headers.forEach((value, key) => {
@@ -76,9 +74,6 @@ async function proxyRequest(request: NextRequest, path: string[]) {
       headers: responseHeaders,
     });
   } catch (error) {
-    console.error('[API Proxy] Error:', error);
-    console.error('[API Proxy] Backend URL:', backendUrl);
-    console.error('[API Proxy] Target URL:', targetUrl);
     return NextResponse.json(
       {
         error: 'Failed to proxy request to backend',

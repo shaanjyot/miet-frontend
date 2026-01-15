@@ -43,11 +43,11 @@ export default function MarketplaceSection() {
         const activeProducts = productsArray.filter((p: Product) => p.status === 'active');
         setProducts(activeProducts);
       } else {
-        console.error('Failed to fetch products');
+
         setProducts([]);
       }
     } catch (error) {
-      console.error('Error fetching products:', error);
+
       setProducts([]);
     } finally {
       setLoading(false);

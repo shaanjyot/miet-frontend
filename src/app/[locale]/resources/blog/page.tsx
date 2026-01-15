@@ -70,7 +70,7 @@ export default function BlogListingPage() {
         setBlogs([]);
       }
     } catch (err) {
-      console.error('Error fetching blogs:', err);
+
       setError(err instanceof Error ? err.message : 'Failed to fetch blogs');
       setBlogs([]);
     } finally {

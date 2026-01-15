@@ -38,7 +38,7 @@ export default function WebinarsPage() {
         setWebinars(data.webinars || []);
       }
     } catch (error) {
-      console.error('Error loading webinars:', error);
+
     } finally {
       setLoading(false);
     }

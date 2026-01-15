@@ -1002,7 +1002,7 @@ export default function CartPage() {
                         amount={calculateTotal()}
                         currency="INR"
                         onSuccess={(paymentData) => {
-                          console.log('Payment successful:', paymentData);
+
                           // Clear cart using context
                           clearCart();
                           setShowCheckoutModal(false);
@@ -1010,7 +1010,7 @@ export default function CartPage() {
                           alert('Payment successful! Order placed successfully. Thank you for your purchase.');
                         }}
                         onFailure={(error) => {
-                          console.error('Payment failed:', error);
+
                           setError('Payment failed. Please try again.');
                         }}
                         onClose={() => {

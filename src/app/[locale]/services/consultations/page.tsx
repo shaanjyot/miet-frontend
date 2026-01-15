@@ -114,7 +114,7 @@ export default function ConsultationsPage() {
         setUser(null);
       }
     } catch (error) {
-      console.error('Error checking auth status:', error);
+
       localStorage.removeItem('user_jwt');
       setUser(null);
     }
@@ -182,11 +182,11 @@ export default function ConsultationsPage() {
         const slots = await response.json();
         setAvailabilitySlots(slots);
       } else {
-        console.error('Failed to fetch availability');
+
         setAvailabilitySlots([]);
       }
     } catch (error) {
-      console.error('Error fetching consultant availability:', error);
+
       setAvailabilitySlots([]);
     }
   };
@@ -203,7 +203,7 @@ export default function ConsultationsPage() {
         setConsultants(data || []);
       }
     } catch (error) {
-      console.error('Error loading consultants:', error);
+
       addNotification({
         type: 'error',
         title: 'Error',
@@ -303,7 +303,7 @@ export default function ConsultationsPage() {
         });
       }
     } catch (error) {
-      console.error('Error creating appointment:', error);
+
       addNotification({
         type: 'error',
         title: 'Error',

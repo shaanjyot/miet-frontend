@@ -94,7 +94,7 @@ export default function ConsultantDetailPage() {
         setUser(null);
       }
     } catch (error) {
-      console.error('Error checking auth status:', error);
+
       setUser(null);
     }
   };

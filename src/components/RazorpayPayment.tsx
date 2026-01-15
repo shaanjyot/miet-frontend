@@ -64,7 +64,7 @@ export default function RazorpayPayment({
           setError('Failed to load Razorpay configuration');
         }
       } catch (err) {
-        console.error('Error loading Razorpay:', err);
+
         setError('Failed to initialize payment gateway');
       }
     };
@@ -132,7 +132,7 @@ export default function RazorpayPayment({
 
             onSuccess(paymentData);
           } catch (err) {
-            console.error('Payment verification failed:', err);
+
             onFailure(err);
           }
         },
@@ -150,7 +150,7 @@ export default function RazorpayPayment({
       razorpayInstance.open();
 
     } catch (err) {
-      console.error('Payment initialization failed:', err);
+
       setError(err instanceof Error ? err.message : 'Payment initialization failed');
       onFailure(err);
     } finally {

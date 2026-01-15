@@ -56,7 +56,7 @@ export default function BlogDetailPage({ params }: { params: any }) {
         throw new Error('Blog not found');
       }
     } catch (err) {
-      console.error('Error fetching blog:', err);
+
       setError(err instanceof Error ? err.message : 'Failed to load blog');
     } finally {
       setLoading(false);

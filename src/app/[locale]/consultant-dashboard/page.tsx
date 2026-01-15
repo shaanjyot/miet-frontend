@@ -98,7 +98,7 @@ export default function ConsultantDashboard() {
       // Load availability
       await loadAvailability(token);
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+
     } finally {
       setLoading(false);
     }
@@ -114,7 +114,7 @@ export default function ConsultantDashboard() {
         setConsultant(data);
       }
     } catch (error) {
-      console.error('Error loading consultant profile:', error);
+
     }
   };
 
@@ -128,7 +128,7 @@ export default function ConsultantDashboard() {
         setAppointments(data.appointments || []);
       }
     } catch (error) {
-      console.error('Error loading appointments:', error);
+
     }
   };
 
@@ -142,7 +142,7 @@ export default function ConsultantDashboard() {
         setWebinars(data.webinars || []);
       }
     } catch (error) {
-      console.error('Error loading webinars:', error);
+
     }
   };
 
@@ -156,7 +156,7 @@ export default function ConsultantDashboard() {
         setAvailability(data.availability || []);
       }
     } catch (error) {
-      console.error('Error loading availability:', error);
+
     }
   };
 
@@ -185,7 +185,7 @@ export default function ConsultantDashboard() {
         alert('Failed to add availability');
       }
     } catch (error) {
-      console.error('Error adding availability:', error);
+
       alert('Error adding availability');
     }
   };
@@ -206,7 +206,7 @@ export default function ConsultantDashboard() {
         alert('Failed to delete availability');
       }
     } catch (error) {
-      console.error('Error deleting availability:', error);
+
       alert('Error deleting availability');
     }
   };

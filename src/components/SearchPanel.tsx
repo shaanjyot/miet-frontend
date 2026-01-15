@@ -79,19 +79,6 @@ export default function SearchPanel() {
     version: 'weekly',
   });
 
-  // Log errors for debugging
-  useEffect(() => {
-    if (loadError) {
-      const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
-      console.error('🚨 Google Maps Load Error:', {
-        error: loadError,
-        message: loadError?.message,
-        currentUrl: currentUrl,
-        hostname: typeof window !== 'undefined' ? window.location.hostname : '',
-        apiKeyPrefix: googleMapsApiKey?.substring(0, 10) + '...',
-      });
-    }
-  }, [loadError, googleMapsApiKey]);
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [mapCenter, setMapCenter] = useState(defaultCenter);
@@ -157,7 +144,6 @@ export default function SearchPanel() {
         setUser(null);
       }
     } catch (error) {
-      console.error('Error checking auth status:', error);
       localStorage.removeItem('user_jwt');
       setUser(null);
     }
@@ -189,7 +175,6 @@ export default function SearchPanel() {
         setGeoAddresses(prev => ({ ...prev, [id]: data.results[0].formatted_address }));
       }
     } catch (error) {
-      console.warn(`Failed to fetch address for consultant ${id}:`, error);
     }
   }, [googleMapsApiKey]);
 
@@ -317,8 +302,8 @@ export default function SearchPanel() {
     const resizeObserver = new ResizeObserver(() => {
       if (leftRef.current) setMapHeight(leftRef.current.offsetHeight);
     });
-    try { resizeObserver.observe(leftRef.current); } catch (e) { console.warn(e); }
-    return () => { try { resizeObserver.disconnect(); } catch (e) { console.warn(e); } };
+    try { resizeObserver.observe(leftRef.current); } catch (e) { }
+    return () => { try { resizeObserver.disconnect(); } catch (e) { } };
   }, []);
 
   // Reverse geocode city name
@@ -678,7 +663,6 @@ export default function SearchPanel() {
                         setConsultants(parsed);
                         setError(null);
                       } catch (e) {
-                        console.error('Error fetching consultants:', e);
                         setConsultants([]);
                         if (e instanceof Error) {
                           if (e.name === 'AbortError') {
@@ -1113,26 +1097,15 @@ export default function SearchPanel() {
                   ...(mapId && { mapId }), // Only include mapId if configured
                 }}
                 onLoad={(map) => {
-                  const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1');
-                  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
-                  console.log(`✅ Google Map loaded successfully ${isProduction ? '(PRODUCTION)' : '(LOCALHOST)'}:`, map);
-                  console.log(`📍 Current URL: ${currentUrl}`);
-                  console.log(`🔑 API Key (first 10 chars): ${googleMapsApiKey?.substring(0, 10)}...`);
                   mapInstanceRef.current = map;
                   setMapInitialized(true);
                   // Ensure map stays mounted
                   if (map) {
-                    console.log('🗺️ Map instance stored, will remain mounted');
-                    if (isProduction) {
-                      console.log('🔒 Production mode: Map will persist across re-renders');
-                    }
                   }
                 }}
                 onUnmount={() => {
-                  console.log('⚠️ Google Map unmounted - this should not happen after initialization');
                   // Prevent unmounting if already initialized
                   if (mapInitialized) {
-                    console.warn('Map was unmounted after initialization - attempting to keep mounted');
                   }
                 }}
                 onClick={() => {
@@ -1150,7 +1123,6 @@ export default function SearchPanel() {
                   // Only render marker if lat/lng are valid numbers and within valid ranges
                   if (typeof c.lat !== 'number' || isNaN(c.lat) || typeof c.lng !== 'number' || isNaN(c.lng) ||
                     c.lat < -90 || c.lat > 90 || c.lng < -180 || c.lng > 180) {
-                    console.warn(`⚠️ Skipping marker for ${c.name} due to invalid coordinates: lat=${c.lat}, lng=${c.lng}`);
                     return null;
                   }
 
@@ -1167,7 +1139,6 @@ export default function SearchPanel() {
                         anchor: new window.google.maps.Point(22, 22)
                       };
                     } catch (error) {
-                      console.warn(`Failed to create marker icon for ${c.name}:`, error);
                     }
                   }
 
@@ -1178,7 +1149,6 @@ export default function SearchPanel() {
                       icon={markerIcon}
                       title={c.name}
                       onClick={() => {
-                        console.log('📍 Marker clicked for consultant:', c.name, 'with coordinates:', { lat: c.lat, lng: c.lng });
                         setSelectedConsultant(c);
                       }}
                     />

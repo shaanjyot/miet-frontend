@@ -72,7 +72,7 @@ export default function AppointmentPayment({
           setError('Failed to load Razorpay configuration');
         }
       } catch (err) {
-        console.error('Error loading Razorpay:', err);
+
         setError('Failed to initialize payment gateway');
       }
     };
@@ -142,7 +142,7 @@ export default function AppointmentPayment({
 
             onSuccess(paymentData);
           } catch (err) {
-            console.error('Payment confirmation failed:', err);
+
             onFailure(err);
           }
         },
@@ -160,7 +160,7 @@ export default function AppointmentPayment({
       razorpayInstance.open();
 
     } catch (err) {
-      console.error('Payment initialization failed:', err);
+
       setError(err instanceof Error ? err.message : 'Payment initialization failed');
       onFailure(err);
     } finally {

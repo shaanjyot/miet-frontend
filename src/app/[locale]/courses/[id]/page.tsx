@@ -83,7 +83,6 @@ export default function CourseDetailPage({ params }: { params: any }) {
         );
 
         if (foundCourse) {
-          console.log('✅ Course found:', foundCourse);
 
           // Data Normalization & Parsing
           const normalized = { ...foundCourse };
@@ -127,7 +126,7 @@ export default function CourseDetailPage({ params }: { params: any }) {
         throw new Error(`Backend responded with status: ${response.status}`);
       }
     } catch (err) {
-      console.error('❌ Error fetching course:', err);
+
       setError('Failed to load course data');
     } finally {
       setLoading(false);

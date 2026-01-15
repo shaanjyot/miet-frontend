@@ -45,7 +45,7 @@ export default function CoursesPage() {
 
       // Debug environment variable
       const apiUrl = getApiUrl('api/products');
-      console.log('🔧 API URL:', apiUrl);
+      ('🔧 API URL:', apiUrl);
 
       // Fetch courses from backend API with timeout
       const controller = new AbortController();
@@ -59,26 +59,18 @@ export default function CoursesPage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('📊 Raw backend data:', data);
 
         const productsArray = data.products || data;
-        console.log('📦 Products array:', productsArray);
-        console.log('📦 Products array length:', productsArray.length);
 
         // Filter only active courses
         const activeCourses = productsArray.filter((product: any) => {
           const isActive = product.status === 'active';
           const productType = (product.type || product.product_type || '').toLowerCase();
           const isCourse = productType === 'course';
-          console.log(`🔍 Product: ${product.title || product.name}, Status: ${product.status}, Type: ${product.type || product.product_type}, Active: ${isActive}, Course: ${isCourse}`);
           return isActive && isCourse;
         });
 
-        console.log('✅ Active courses found:', activeCourses.length);
-        console.log('✅ Active courses data:', activeCourses);
-
         if (activeCourses.length === 0) {
-          console.log('⚠️ No active courses found in backend data');
           setError(t('noCourses'));
         } else {
           setCourses(activeCourses);
@@ -89,7 +81,6 @@ export default function CoursesPage() {
       }
 
     } catch (err) {
-      console.error('❌ Error fetching courses:', err);
 
       if (err instanceof Error) {
         if (err.name === 'AbortError') {

@@ -54,7 +54,6 @@ export default function CategoryPage({ params }: { params: { category: string } 
 
       // Debug environment variable
       const apiUrl = getApiUrl('api/products');
-      console.log(`🔧 ${category} Category - API URL:`, apiUrl);
 
       // Fetch products with timeout
       const controller = new AbortController();
@@ -68,36 +67,31 @@ export default function CategoryPage({ params }: { params: { category: string } 
 
       if (response.ok) {
         const data = await response.json();
-        console.log(`📊 ${category} Category - Raw backend data:`, data);
 
         const productsArray = data.products || data;
-        console.log(`📦 ${category} Category - Products array:`, productsArray);
-        console.log(`📦 ${category} Category - Products array length:`, productsArray.length);
+
 
         // Filter by category and only show active products
         const categoryProducts = productsArray.filter((product: Product) => {
           const productType = product.type || product.product_type;
           const isActive = product.status === 'active';
           const matchesCategory = productType?.toLowerCase() === category.toLowerCase();
-          console.log(`🔍 ${category} Category - Product: ${product.title || product.name}, Type: ${productType}, Active: ${isActive}, Category Match: ${matchesCategory}`);
+
           return isActive && matchesCategory;
         });
 
-        console.log(`✅ ${category} Category - Category products found:`, categoryProducts.length);
-        console.log(`✅ ${category} Category - Category products data:`, categoryProducts);
 
         setProducts(categoryProducts);
       } else {
         throw new Error(`Backend responded with status: ${response.status}`);
       }
     } catch (error) {
-      console.error(`❌ ${category} Category - Error fetching products:`, error);
 
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          console.error(`❌ ${category} Category - Request timed out`);
+
         } else {
-          console.error(`❌ ${category} Category - Error: ${error.message}`);
+
         }
       }
 

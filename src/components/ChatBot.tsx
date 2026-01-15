@@ -96,7 +96,7 @@ export const ChatBot: React.FC = () => {
             };
             setMessages(prev => [...prev, assistantMessage]);
         } catch (error: any) {
-            console.error('Chat error:', error);
+
             setMessages(prev => [...prev, {
                 role: 'assistant',
                 content: error.message || 'Sorry, I encountered an error. Please try again later.'

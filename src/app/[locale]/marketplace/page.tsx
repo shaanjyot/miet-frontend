@@ -38,7 +38,6 @@ export default function MarketplacePage() {
 
       // Debug environment variable
       const apiUrl = getApiUrl('api/products');
-      console.log('🔧 Marketplace - API URL:', apiUrl);
 
       // Fetch products with timeout
       const controller = new AbortController();
@@ -52,29 +51,25 @@ export default function MarketplacePage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('📊 Marketplace - Raw backend data:', data);
 
         const productsArray = data.products || data;
-        console.log('📦 Marketplace - Products array:', productsArray);
-        console.log('📦 Marketplace - Products array length:', productsArray.length);
+
 
         // Only show active products
         const activeProducts = productsArray.filter((p: Product) => p.status === 'active');
-        console.log('✅ Marketplace - Active products found:', activeProducts.length);
-        console.log('✅ Marketplace - Active products data:', activeProducts);
+
 
         setProducts(activeProducts);
       } else {
         throw new Error(`Backend responded with status: ${response.status}`);
       }
     } catch (error) {
-      console.error('❌ Marketplace - Error fetching products:', error);
 
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          console.error('❌ Marketplace - Request timed out');
+
         } else {
-          console.error(`❌ Marketplace - Error: ${error.message}`);
+
         }
       }
 

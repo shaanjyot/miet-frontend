@@ -47,54 +47,47 @@ export default function BlogSection() {
       setError(null);
 
       const apiUrl = getApiUrl('api/blogs');
-      console.log('Fetching blogs from:', apiUrl);
 
       // Test if the endpoint is reachable
       try {
         const testResponse = await fetch(apiUrl, { method: 'HEAD' });
-        console.log('API endpoint test - Status:', testResponse.status);
-        console.log('API endpoint test - Headers:', Object.fromEntries(testResponse.headers.entries()));
+
+
       } catch (testErr) {
-        console.log('API endpoint test failed:', testErr);
+
       }
 
       const response = await fetch(apiUrl);
-      console.log('Main API response status:', response.status);
-      console.log('Main API response headers:', Object.fromEntries(response.headers.entries()));
+
 
       if (!response.ok) {
         throw new Error(`Failed to fetch blogs: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('Raw API response:', data);
-      console.log('Response type:', typeof data);
-      console.log('Is array?', Array.isArray(data));
+
+
 
       // Extract blogs array from response and filter only active/published blogs
       const blogsArray = data.blogs || data;
-      console.log('Blogs array:', blogsArray);
-      console.log('Blogs array length:', blogsArray?.length || 0);
+
 
       if (blogsArray && Array.isArray(blogsArray)) {
-        console.log('First blog sample:', blogsArray[0]);
 
         const activeBlogs = blogsArray.filter((blog: Blog) => {
           const isActive = blog.status === 'active' || blog.status === 'published' || blog.status === 'live';
-          console.log(`Blog "${blog.title}" status: ${blog.status}, isActive: ${isActive}`);
+
           return isActive;
         });
 
-        console.log('Active blogs count:', activeBlogs.length);
-        console.log('Active blogs:', activeBlogs);
 
         setBlogs(activeBlogs);
       } else {
-        console.log('No valid blogs array found, setting empty array');
+
         setBlogs([]);
       }
     } catch (err) {
-      console.error('Error fetching blogs:', err);
+
       setError(err instanceof Error ? err.message : 'Failed to fetch blogs');
       // Fallback to empty array if API fails
       setBlogs([]);
@@ -118,7 +111,6 @@ export default function BlogSection() {
 
   // Transform API blogs to match the display format
   const transformedBlogs: TransformedBlog[] = displayBlogs.map(blog => {
-    console.log('Transforming blog:', blog);
 
     if ('thumbnail' in blog) {
       // API blog format
@@ -131,18 +123,16 @@ export default function BlogSection() {
         date: blog.created_at ? new Date(blog.created_at).toLocaleDateString() : 'Recent',
         category: blog.category,
       };
-      console.log('Transformed API blog:', transformed);
+
       return transformed;
     } else {
       // This should never happen now since we removed fallback data
-      console.log('Unexpected blog format:', blog);
+
       return blog as TransformedBlog;
     }
   });
 
-  console.log('Final transformed blogs:', transformedBlogs);
-  console.log('Display blogs count:', displayBlogs.length);
-  console.log('Blogs state count:', blogs.length);
+
 
   // Create posts array for marquee - NO DUPLICATION, show blogs only once
   let posts: TransformedBlog[];

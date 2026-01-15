@@ -61,7 +61,6 @@ export default function UserDashboard() {
   }, []);
 
   const checkAuthAndLoadData = async () => {
-    console.log('Checking authentication...');
 
     // Check for token in URL parameters first (OAuth callback)
     const urlParams = new URLSearchParams(window.location.search);
@@ -69,8 +68,8 @@ export default function UserDashboard() {
     const isGoogleAuth = urlParams.get('google_auth') === 'true';
 
     if (tokenFromUrl) {
-      console.log('Token found in URL, storing in localStorage');
-      console.log('Google OAuth:', isGoogleAuth);
+
+
       localStorage.setItem('user_jwt', tokenFromUrl);
       // Store auth type for future reference
       if (isGoogleAuth) {
@@ -84,17 +83,16 @@ export default function UserDashboard() {
 
     const token = localStorage.getItem('user_jwt');
     const authType = localStorage.getItem('auth_type') || 'jwt';
-    console.log('Token from localStorage:', token ? 'exists' : 'not found');
-    console.log('Auth type:', authType);
+
 
     if (!token) {
-      console.log('No token found, showing login screen');
+
       setLoading(false);
       return;
     }
 
     try {
-      console.log('Fetching user profile...');
+
       // Get user profile
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -104,14 +102,12 @@ export default function UserDashboard() {
       });
       clearTimeout(timeoutId);
 
-      console.log('Profile response status:', userResponse.status);
-
       if (userResponse.ok) {
         const responseData = await userResponse.json();
-        console.log('Response data received:', responseData);
+
         // Extract user data from the response
         const userData = responseData.user || responseData;
-        console.log('User data extracted:', userData);
+
         setUser(userData);
 
         // Load user's consultations
@@ -120,12 +116,12 @@ export default function UserDashboard() {
         // Load upcoming webinars
         await loadUpcomingWebinars();
       } else {
-        console.log('Profile fetch failed, removing token');
+
         localStorage.removeItem('user_jwt');
         localStorage.removeItem('auth_type');
       }
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+
     } finally {
       setLoading(false);
     }
@@ -133,7 +129,7 @@ export default function UserDashboard() {
 
   const loadConsultations = async (token: string) => {
     try {
-      console.log('Loading consultations with token:', token ? 'exists' : 'not found');
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       const response = await fetch(`${getApiUrl('api/consultations/by-email')}`, {
@@ -142,19 +138,17 @@ export default function UserDashboard() {
       });
       clearTimeout(timeoutId);
 
-      console.log('Consultations response status:', response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('Consultations data received:', data);
-        console.log('Appointments array:', data.appointments);
+
+
         setConsultations(data.appointments || []);
       } else {
         const errorData = await response.json();
-        console.error('Consultations API error:', errorData);
+
       }
     } catch (error) {
-      console.error('Error loading consultations:', error);
+
     }
   };
 
@@ -175,7 +169,7 @@ export default function UserDashboard() {
         setUpcomingWebinars(upcoming);
       }
     } catch (error) {
-      console.error('Error loading webinars:', error);
+
     }
   };
 
@@ -706,7 +700,7 @@ export default function UserDashboard() {
                           <button
                             onClick={() => {
                               // TODO: Implement edit functionality
-                              console.log('Edit consultation:', consultation.id);
+
                             }}
                             style={{
                               background: '#f3e5f5',
@@ -769,7 +763,7 @@ export default function UserDashboard() {
                                     });
                                   }
                                 } catch (error) {
-                                  console.error('Error deleting consultation:', error);
+
                                   addNotification({
                                     type: 'error',
                                     title: 'Error',
@@ -1146,7 +1140,7 @@ export default function UserDashboard() {
                         <button
                           onClick={() => {
                             // TODO: Implement edit functionality
-                            console.log('Edit consultation:', consultation.id);
+
                           }}
                           style={{
                             background: '#f3e5f5',
@@ -1209,7 +1203,7 @@ export default function UserDashboard() {
                                   });
                                 }
                               } catch (error) {
-                                console.error('Error deleting consultation:', error);
+
                                 addNotification({
                                   type: 'error',
                                   title: 'Error',

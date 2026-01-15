@@ -480,18 +480,18 @@ export default function AdminDashboard() {
                 return { ...c, slots: [] };
               }
             } catch (error) {
-              console.error(`Error fetching slots for consultant ${c.id}:`, error);
+
               return { ...c, slots: [] };
             }
           })
         );
         setConsultants(consultantsWithSlots);
       } else {
-        console.error('Failed to fetch consultants:', res.status);
+
         setConsultants([]);
       }
     } catch (error) {
-      console.error('Error fetching consultants:', error);
+
       setConsultants([]);
     }
   }
@@ -528,18 +528,17 @@ export default function AdminDashboard() {
       const res = await fetch(getApiUrl('api/products'));
       if (res.ok) {
         const data = await res.json();
-        console.log('Initial products fetch:', data);
 
         // Extract products array from response
         const productsArray = data.products || data;
-        console.log('Initial products array:', productsArray);
+
         setProducts(productsArray);
       } else {
-        console.error('Failed to fetch products:', res.status);
+
         setProducts([]);
       }
     } catch (error) {
-      console.error('Error fetching products:', error);
+
       setProducts([]);
     }
   }
@@ -560,7 +559,7 @@ export default function AdminDashboard() {
         setWebinars(data.webinars || []);
       }
     } catch (error) {
-      console.error('Error fetching webinars:', error);
+
       setWebinars([]);
     }
   }
@@ -581,7 +580,7 @@ export default function AdminDashboard() {
         setConsultations(data.consultations || []);
       }
     } catch (error) {
-      console.error('Error fetching consultations:', error);
+
       setConsultations([]);
     }
   }
@@ -595,11 +594,11 @@ export default function AdminDashboard() {
 
   // Debug: Log products state changes
   useEffect(() => {
-    console.log('Products state changed:', products);
-    console.log('Products is array:', Array.isArray(products));
+
+
     if (Array.isArray(products)) {
-      console.log('Products count:', products.length);
-      console.log('First product:', products[0]);
+
+
     }
   }, [products]);
 
@@ -770,8 +769,6 @@ export default function AdminDashboard() {
         subcategory_ids: Array.isArray(consultantForm.subcategory_ids) ? consultantForm.subcategory_ids.map(Number) : [],
       };
 
-      console.log('Submitting consultant:', { method, url, payload });
-
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -803,14 +800,14 @@ export default function AdminDashboard() {
         setConsultantFormLoaded(false);
         setShowConsultantModal(false);
         fetchConsultants();
-        console.log('Consultant saved successfully');
+
       } else {
         const errorData = await res.text();
-        console.error('Failed to save consultant:', res.status, errorData);
+
         alert(`Failed to save consultant: ${res.status} ${errorData}`);
       }
     } catch (error) {
-      console.error('Error saving consultant:', error);
+
       alert('Error saving consultant. Please try again.');
     }
   }
@@ -1055,7 +1052,7 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       setServiceFormMessage('Error submitting service.');
-      console.error('Error submitting service:', err);
+
     } finally {
       setServiceFormLoading(false);
     }
@@ -1232,7 +1229,7 @@ export default function AdminDashboard() {
     setFormLoading(true);
     setFormMessage('');
     const data = { name: formName, email: formEmail };
-    console.log('Form data to submit:', data);
+
     try {
       const res = await fetch(getApiUrl('submit-form'), {
         method: 'POST',
@@ -1241,10 +1238,10 @@ export default function AdminDashboard() {
       });
       const result = await res.json();
       setFormMessage('Form submitted successfully!');
-      console.log('Server response:', result);
+
     } catch (err) {
       setFormMessage('Error submitting form.');
-      console.error('Error submitting form:', err);
+
     } finally {
       setFormLoading(false);
     }
@@ -1333,15 +1330,15 @@ export default function AdminDashboard() {
       const res = await fetch(getApiUrl('api/blogs'));
       if (res.ok) {
         const data = await res.json();
-        console.log('Blogs fetched:', data);
+
         const blogsArray = data.blogs || data;
         setBlogs(blogsArray);
       } else {
-        console.error('Failed to fetch blogs:', res.status);
+
         setBlogs([]);
       }
     } catch (error) {
-      console.error('Error fetching blogs:', error);
+
       setBlogs([]);
     }
   }
@@ -1381,7 +1378,7 @@ export default function AdminDashboard() {
         });
       }
     } catch (error) {
-      console.error('Error saving blog:', error);
+
       addNotification({
         type: 'error',
         title: 'Error',
@@ -1420,7 +1417,7 @@ export default function AdminDashboard() {
         alert('Failed to delete blog');
       }
     } catch (error) {
-      console.error('Error deleting blog:', error);
+
       alert('Error deleting blog');
     }
   }
@@ -1469,7 +1466,7 @@ export default function AdminDashboard() {
         alert(`Failed to save webinar: ${res.status} ${errorData}`);
       }
     } catch (error) {
-      console.error('Error saving webinar:', error);
+
       alert('Error saving webinar. Please try again.');
     }
   }
@@ -1501,7 +1498,7 @@ export default function AdminDashboard() {
         alert('Failed to delete webinar');
       }
     } catch (error) {
-      console.error('Error deleting webinar:', error);
+
       alert('Error deleting webinar');
     }
   }
@@ -1547,7 +1544,7 @@ export default function AdminDashboard() {
         alert(`Failed to save consultation: ${res.status} ${errorData}`);
       }
     } catch (error) {
-      console.error('Error saving consultation:', error);
+
       alert('Error saving consultation. Please try again.');
     }
   }
@@ -1581,7 +1578,7 @@ export default function AdminDashboard() {
         alert('Failed to delete consultation');
       }
     } catch (error) {
-      console.error('Error deleting consultation:', error);
+
       alert('Error deleting consultation');
     }
   }
@@ -1603,7 +1600,7 @@ export default function AdminDashboard() {
         alert('Failed to initiate Google OAuth setup');
       }
     } catch (error) {
-      console.error('Error setting up Google OAuth:', error);
+
       alert('Error setting up Google OAuth');
     }
   }
@@ -5319,9 +5316,8 @@ export default function AdminDashboard() {
                             if (productForm.iconFile) formData.append('icon', productForm.iconFile);
                           }
                           const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-                          console.log('Backend URL:', backendUrl);
-                          console.log('FormData contents:', Array.from(formData.entries()));
-                          console.log('Product form state:', productForm);
+
+
 
                           // Try both FormData and JSON to see which works
                           const url = productEditId
@@ -5335,7 +5331,7 @@ export default function AdminDashboard() {
                           });
                           if (!response.ok) {
                             const error = await response.json();
-                            console.log('Backend error response:', error);
+
                             alert(error.message || 'Failed to add product');
                             return;
                           }
@@ -5345,15 +5341,14 @@ export default function AdminDashboard() {
                           // Re-fetch products after successful add
                           const res = await fetch(getApiUrl('api/products'));
                           const data = await res.json();
-                          console.log('Fetched products data:', data);
-                          console.log('Products data type:', typeof data);
-                          console.log('Is array?', Array.isArray(data));
+
+
 
                           // Extract products array from response
                           const productsArray = data.products || data;
-                          console.log('Products array to set:', productsArray);
+
                           setProducts(productsArray);
-                          console.log('Products state after setProducts:', productsArray);
+
                           setProductForm({
                             type: 'Course',
                             status: 'active',
@@ -5378,7 +5373,7 @@ export default function AdminDashboard() {
                           setProductEditId(null);
                           setShowProductModal(false);
                         } catch (error) {
-                          console.error('Error submitting product:', error);
+
                           alert('Error: Failed to submit product. Please try again.');
                         }
                       }}
@@ -8136,14 +8131,14 @@ export default function AdminDashboard() {
                         setShowSuccessPopup(true);
                       } else {
                         // Backend delete failed, do frontend-only deletion
-                        console.log('Backend delete failed, doing frontend-only deletion');
+
                         setProducts(products.filter(p => p.id !== deleteProductId));
                         setSuccessMessage('Product removed from view (backend delete not implemented)');
                         setShowSuccessPopup(true);
                       }
                     } catch (error) {
                       // Network error, do frontend-only deletion
-                      console.log('Network error, doing frontend-only deletion');
+
                       setProducts(products.filter(p => p.id !== deleteProductId));
                       setSuccessMessage('Product removed from view (backend delete not implemented)');
                       setShowSuccessPopup(true);

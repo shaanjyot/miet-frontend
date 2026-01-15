@@ -62,15 +62,15 @@ export default function BlogsPage() {
       const res = await fetch(getApiUrl('api/blogs'));
       if (res.ok) {
         const data = await res.json();
-        console.log('Blogs fetched:', data);
+
         const blogsArray = data.blogs || data;
         setBlogs(blogsArray);
       } else {
-        console.error('Failed to fetch blogs:', res.status);
+
         setBlogs([]);
       }
     } catch (error) {
-      console.error('Error fetching blogs:', error);
+
       setBlogs([]);
     } finally {
       setLoading(false);
@@ -134,7 +134,7 @@ export default function BlogsPage() {
         alert(`Failed to save blog: ${res.status} ${errorData}`);
       }
     } catch (error) {
-      console.error('Error saving blog:', error);
+
       alert('Error saving blog. Please try again.');
     }
   }
@@ -192,7 +192,7 @@ export default function BlogsPage() {
         alert('Failed to delete blog');
       }
     } catch (error) {
-      console.error('Error deleting blog:', error);
+
       alert('Error deleting blog');
     }
   }

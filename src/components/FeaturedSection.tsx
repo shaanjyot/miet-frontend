@@ -82,7 +82,7 @@ export default function FeaturedSection() {
         setUser(null);
       }
     } catch (error) {
-      console.error('Error checking auth status:', error);
+
       localStorage.removeItem('user_jwt');
       setUser(null);
     }

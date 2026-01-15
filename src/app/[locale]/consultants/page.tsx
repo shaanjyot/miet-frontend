@@ -45,17 +45,11 @@ export default function ConsultantsPage() {
 
     try {
       const url = getApiUrl('api/consultants/public');
-      console.log('Fetching all consultants with URL:', url);
 
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch consultants");
       const data = await res.json();
-      console.log('API response for consultants:', data); // Debug backend data
-      console.log('Total consultants from API:', data.length);
 
-      // Check for duplicates in the raw data
-      const duplicateIds = data.reduce((acc: number[], consultant: Consultant, index: number) => {
-        const firstIndex = data.findIndex((c: Consultant) => c.id === consultant.id);
         if (firstIndex !== index) {
           acc.push(consultant.id);
         }
@@ -63,7 +57,7 @@ export default function ConsultantsPage() {
       }, []);
 
       if (duplicateIds.length > 0) {
-        console.log('Found duplicate IDs in API response:', duplicateIds);
+
       }
 
       // Remove duplicates by ID (keep only the first occurrence)
@@ -71,13 +65,11 @@ export default function ConsultantsPage() {
         new Map(data.map((c: Consultant) => [c.id, c])).values()
       ) as Consultant[];
 
-      console.log('Unique consultants after deduplication:', uniqueConsultants.length);
-      console.log('Removed duplicates:', data.length - uniqueConsultants.length);
 
       setAllConsultants(uniqueConsultants);
       setConsultants(uniqueConsultants);
     } catch (err) {
-      console.error('Error fetching consultants:', err);
+
       setError("Could not load consultants.");
     } finally {
       setLoading(false);
@@ -135,7 +127,6 @@ export default function ConsultantsPage() {
       );
     }
 
-    console.log('Filtered consultants:', filteredConsultants.length);
     setConsultants(filteredConsultants);
     setIsFiltering(false);
   };
@@ -164,13 +155,12 @@ export default function ConsultantsPage() {
   }, [allConsultants]);
 
   const categories = useMemo(() => {
-    console.log('All consultants for categories:', allConsultants.map(c => ({ name: c.name, expertise: c.expertise, speciality: c.speciality })));
+
     const categorySet = new Set(allConsultants.map(c => c.expertise || c.speciality).filter(Boolean));
     return Array.from(categorySet).sort();
   }, [allConsultants]);
 
   const modes = useMemo(() => {
-    console.log('All consultants for modes:', allConsultants.map(c => ({ name: c.name, mode: c.mode, status: c.status })));
 
     // Create a set with explicit Online/Offline options plus any other modes from data
     const modeSet = new Set<string>();
@@ -487,7 +477,7 @@ export default function ConsultantsPage() {
                 }}
               >
                 {paginated.map((consultant, index) => {
-                  console.log('Consultant image:', consultant.image);
+
                   return (
                     <Link
                       key={`${consultant.id}-${consultant.name}-${index}`}
