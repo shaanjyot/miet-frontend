@@ -99,6 +99,23 @@ export default function SearchPanel() {
   const [bookingNotes, setBookingNotes] = useState('');
   const [mapRetryCount, setMapRetryCount] = useState(0);
   const [isClient, setIsClient] = useState(false);
+  const [mapApiError, setMapApiError] = useState<string | null>(null);
+
+  // Listen for Google Maps API errors (like InvalidKeyMapError)
+  useEffect(() => {
+    const handleGoogleMapsError = (event: ErrorEvent) => {
+      if (event.message && (
+        event.message.includes('InvalidKeyMapError') ||
+        event.message.includes('RefererNotAllowedMapError') ||
+        event.message.includes('ApiNotActivatedMapError')
+      )) {
+        setMapApiError(event.message);
+      }
+    };
+
+    window.addEventListener('error', handleGoogleMapsError);
+    return () => window.removeEventListener('error', handleGoogleMapsError);
+  }, []);
 
   // Ensure client-side rendering
   useEffect(() => {
@@ -905,7 +922,7 @@ export default function SearchPanel() {
           position: 'relative'
         }
         }>
-          {loadError && !mapInitialized && (
+          {(loadError || mapApiError) && !mapInitialized && (
             <div style={{
               display: 'flex',
               flexDirection: 'column',
@@ -930,16 +947,19 @@ export default function SearchPanel() {
                 color: '#991b1b',
                 fontWeight: '600'
               }}>
-                {loadError?.message?.includes('ApiNotActivatedMapError') || loadError?.message?.includes('ApiTargetBlockedMapError')
-                  ? '⚠️ Maps JavaScript API is NOT ENABLED in Google Cloud Console'
-                  : loadError?.message?.includes('InvalidKeyMapError')
-                    ? '⚠️ The Google Maps API key is INVALID or EXPIRED'
-                    : loadError?.message?.includes('RefererNotAllowedMapError')
-                      ? '⚠️ This domain is NOT AUTHORIZED to use this API key'
-                      : '⚠️ Unable to load Google Maps. Check your internet connection.'
-                }
+                {(() => {
+                  const errorMsg = loadError?.message || mapApiError || '';
+                  if (errorMsg.includes('ApiNotActivatedMapError') || errorMsg.includes('ApiTargetBlockedMapError')) {
+                    return '⚠️ Maps JavaScript API is NOT ENABLED in Google Cloud Console';
+                  } else if (errorMsg.includes('InvalidKeyMapError')) {
+                    return '⚠️ The Google Maps API key is INVALID or domain not authorized';
+                  } else if (errorMsg.includes('RefererNotAllowedMapError')) {
+                    return '⚠️ This domain is NOT AUTHORIZED to use this API key';
+                  }
+                  return '⚠️ Unable to load Google Maps. Check your internet connection.';
+                })()}
               </div>
-              {loadError && (
+              {(loadError || mapApiError) && (
                 <div style={{
                   fontSize: '11px',
                   color: '#999',
@@ -951,7 +971,7 @@ export default function SearchPanel() {
                   maxWidth: '100%',
                   overflow: 'auto'
                 }}>
-                  Error: {loadError.message || 'Unknown error'}
+                  Error: {loadError?.message || mapApiError || 'Unknown error'}
                 </div>
               )}
               <div style={{ fontSize: '13px', color: '#333', marginBottom: '15px', textAlign: 'left', lineHeight: '1.7', background: '#fff', padding: '16px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
@@ -1080,7 +1100,7 @@ export default function SearchPanel() {
           }
           {/* Render map if it's loaded and initialized, or if it's loaded and ready to render */}
           {
-            isClient && (mapInitialized || (isLoaded && !loadError && typeof window !== 'undefined' && window.google && window.google.maps && window.google.maps.Map)) && (
+            isClient && !loadError && !mapApiError && (mapInitialized || (isLoaded && typeof window !== 'undefined' && window.google && window.google.maps && window.google.maps.Map)) && (
               <GoogleMap
                 key="miet-google-map"
                 mapContainerStyle={{ width: '100%', height: '100%' }}
