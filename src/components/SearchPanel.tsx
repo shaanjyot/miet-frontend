@@ -79,6 +79,20 @@ export default function SearchPanel() {
     version: 'weekly',
   });
 
+  // Log errors for debugging
+  useEffect(() => {
+    if (loadError) {
+      const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+      console.error('🚨 Google Maps Load Error:', {
+        error: loadError,
+        message: loadError?.message,
+        currentUrl: currentUrl,
+        hostname: typeof window !== 'undefined' ? window.location.hostname : '',
+        apiKeyPrefix: googleMapsApiKey?.substring(0, 10) + '...',
+      });
+    }
+  }, [loadError, googleMapsApiKey]);
+
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [mapCenter, setMapCenter] = useState(defaultCenter);
   const [listening, setListening] = useState(false);
@@ -1100,7 +1114,10 @@ export default function SearchPanel() {
                 }}
                 onLoad={(map) => {
                   const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1');
+                  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
                   console.log(`✅ Google Map loaded successfully ${isProduction ? '(PRODUCTION)' : '(LOCALHOST)'}:`, map);
+                  console.log(`📍 Current URL: ${currentUrl}`);
+                  console.log(`🔑 API Key (first 10 chars): ${googleMapsApiKey?.substring(0, 10)}...`);
                   mapInstanceRef.current = map;
                   setMapInitialized(true);
                   // Ensure map stays mounted

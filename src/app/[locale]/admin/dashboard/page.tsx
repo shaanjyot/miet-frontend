@@ -228,7 +228,8 @@ export default function AdminDashboard() {
   const [showProfileModal, setShowProfileModal] = useState(false); // for superadmin
   const [showConsultantProfileModal, setShowConsultantProfileModal] = useState(false); // for consultant details
   const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
   });
   const [consultantSlots, setConsultantSlots] = useState<{ date: string; time: string; endTime?: string }[]>([]);
   // Users state
