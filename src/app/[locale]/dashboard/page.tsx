@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import GoogleAuth from '@/components/GoogleAuth';
 import { useNotifications } from '@/components/NotificationSystem';
 import { getApiUrl } from '@/utils/api';
+import { supabase, getSupabaseAccessToken } from '@/utils/supabase';
 import { FaCalendarAlt, FaVideo, FaUserMd, FaClock, FaMapMarkerAlt, FaPhone, FaEnvelope, FaEdit, FaTrash } from 'react-icons/fa';
 import TopBar from '@/components/TopBar';
 import Footer from '@/components/Footer';
@@ -61,67 +62,45 @@ export default function UserDashboard() {
   }, []);
 
   const checkAuthAndLoadData = async () => {
-
-    // Check for token in URL parameters first (OAuth callback)
-    const urlParams = new URLSearchParams(window.location.search);
-    const tokenFromUrl = urlParams.get('token');
-    const isGoogleAuth = urlParams.get('google_auth') === 'true';
-
-    if (tokenFromUrl) {
-
-
-      localStorage.setItem('user_jwt', tokenFromUrl);
-      // Store auth type for future reference
-      if (isGoogleAuth) {
-        localStorage.setItem('auth_type', 'google_oauth');
-      } else {
-        localStorage.setItem('auth_type', 'jwt');
-      }
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-
-    const token = localStorage.getItem('user_jwt');
-    const authType = localStorage.getItem('auth_type') || 'jwt';
-
-
-    if (!token) {
-
-      setLoading(false);
-      return;
-    }
-
     try {
+      // Check Supabase session first
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      // Get user profile
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      const userResponse = await fetch(`${getApiUrl('api/auth/profile')}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (userResponse.ok) {
-        const responseData = await userResponse.json();
-
-        // Extract user data from the response
-        const userData = responseData.user || responseData;
-
-        setUser(userData);
-
-        // Load user's consultations
-        await loadConsultations(token);
-
-        // Load upcoming webinars
-        await loadUpcomingWebinars();
-      } else {
-
-        localStorage.removeItem('user_jwt');
-        localStorage.removeItem('auth_type');
+      if (sessionError || !session?.user) {
+        setLoading(false);
+        return;
       }
-    } catch (error) {
 
+      // Map Supabase user to our User interface
+      const supabaseUser = session.user;
+      const fullName = supabaseUser.user_metadata?.full_name ||
+                       supabaseUser.user_metadata?.name ||
+                       supabaseUser.email?.split('@')[0] ||
+                       'User';
+      const nameParts = fullName.split(' ');
+      const first_name = nameParts[0] || '';
+      const last_name = nameParts.slice(1).join(' ') || '';
+
+      const mappedUser: User = {
+        id: parseInt(supabaseUser.id) || 0,
+        first_name,
+        last_name,
+        email: supabaseUser.email || '',
+        phone: supabaseUser.user_metadata?.phone || undefined
+      };
+
+      setUser(mappedUser);
+
+      // Get Supabase access token for API calls
+      const token = session.access_token;
+
+      // Load user's consultations
+      await loadConsultations(token);
+
+      // Load upcoming webinars
+      await loadUpcomingWebinars();
+    } catch (error) {
+      console.error('Error checking auth:', error);
     } finally {
       setLoading(false);
     }
