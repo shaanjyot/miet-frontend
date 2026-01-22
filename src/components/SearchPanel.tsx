@@ -69,8 +69,11 @@ export default function SearchPanel() {
   const [mapHeight, setMapHeight] = useState(500);
 
   // Get API key from environment
-  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!;
+  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || undefined;
+
+  // Check if API key is configured
+  const apiKeyMissing = !googleMapsApiKey || googleMapsApiKey.trim() === '';
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -922,7 +925,7 @@ export default function SearchPanel() {
           position: 'relative'
         }
         }>
-          {(loadError || mapApiError) && !mapInitialized && (
+          {(loadError || mapApiError || apiKeyMissing) && !mapInitialized && (
             <div style={{
               display: 'flex',
               flexDirection: 'column',
@@ -948,18 +951,21 @@ export default function SearchPanel() {
                 fontWeight: '600'
               }}>
                 {(() => {
+                  if (apiKeyMissing) {
+                    return '⚠️ Google Maps API key is NOT CONFIGURED in environment variables';
+                  }
                   const errorMsg = loadError?.message || mapApiError || '';
                   if (errorMsg.includes('ApiNotActivatedMapError') || errorMsg.includes('ApiTargetBlockedMapError')) {
                     return '⚠️ Maps JavaScript API is NOT ENABLED in Google Cloud Console';
                   } else if (errorMsg.includes('InvalidKeyMapError')) {
-                    return '⚠️ The Google Maps API key is INVALID or domain not authorized';
+                    return '⚠️ Invalid API Key - Check: 1) Maps JavaScript API enabled 2) Billing enabled 3) Key is correct';
                   } else if (errorMsg.includes('RefererNotAllowedMapError')) {
                     return '⚠️ This domain is NOT AUTHORIZED to use this API key';
                   }
                   return '⚠️ Unable to load Google Maps. Check your internet connection.';
                 })()}
               </div>
-              {(loadError || mapApiError) && (
+              {(loadError || mapApiError || apiKeyMissing) && (
                 <div style={{
                   fontSize: '11px',
                   color: '#999',
@@ -971,7 +977,10 @@ export default function SearchPanel() {
                   maxWidth: '100%',
                   overflow: 'auto'
                 }}>
-                  Error: {loadError?.message || mapApiError || 'Unknown error'}
+                  {apiKeyMissing
+                    ? 'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set in .env.local'
+                    : `Error: ${loadError?.message || mapApiError || 'Unknown error'}`
+                  }
                 </div>
               )}
               <div style={{ fontSize: '13px', color: '#333', marginBottom: '15px', textAlign: 'left', lineHeight: '1.7', background: '#fff', padding: '16px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
@@ -1100,7 +1109,7 @@ export default function SearchPanel() {
           }
           {/* Render map if it's loaded and initialized, or if it's loaded and ready to render */}
           {
-            isClient && !loadError && !mapApiError && (mapInitialized || (isLoaded && typeof window !== 'undefined' && window.google && window.google.maps && window.google.maps.Map)) && (
+            isClient && !loadError && !mapApiError && !apiKeyMissing && (mapInitialized || (isLoaded && typeof window !== 'undefined' && window.google && window.google.maps && window.google.maps.Map)) && (
               <GoogleMap
                 key="miet-google-map"
                 mapContainerStyle={{ width: '100%', height: '100%' }}

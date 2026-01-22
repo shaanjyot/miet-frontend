@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useNotifications } from './NotificationSystem';
-import { getApiUrl } from '@/utils/api';
+import { supabase } from '@/utils/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface User {
-  id: number;
+  id: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -27,34 +28,66 @@ export const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, child
   const locale = useLocale();
   const { addNotification } = useNotifications();
 
+  // Convert Supabase user to our User interface
+  const mapSupabaseUserToUser = (supabaseUser: SupabaseUser | null): User | null => {
+    if (!supabaseUser) return null;
+
+    const fullName = supabaseUser.user_metadata?.full_name ||
+                     supabaseUser.user_metadata?.name ||
+                     supabaseUser.email?.split('@')[0] ||
+                     'User';
+    const nameParts = fullName.split(' ');
+    const first_name = nameParts[0] || '';
+    const last_name = nameParts.slice(1).join(' ') || '';
+
+    return {
+      id: supabaseUser.id,
+      first_name,
+      last_name,
+      email: supabaseUser.email || '',
+      phone: supabaseUser.user_metadata?.phone || undefined
+    };
+  };
+
   useEffect(() => {
     checkAuthStatus();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const mappedUser = mapSupabaseUserToUser(session.user);
+        setUser(mappedUser);
+        onLogin?.(mappedUser!);
+        setLoading(false);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        onLogout?.();
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const checkAuthStatus = async () => {
     try {
-      const token = localStorage.getItem('user_jwt');
-      if (!token) {
+      const { data: { session }, error } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error('Error getting session:', error);
         setLoading(false);
         return;
       }
 
-      const response = await fetch(getApiUrl('api/auth/profile'), {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        const user = userData.user || userData;
-        setUser(user);
-        onLogin?.(user);
-      } else {
-        localStorage.removeItem('user_jwt');
+      if (session?.user) {
+        const mappedUser = mapSupabaseUserToUser(session.user);
+        setUser(mappedUser);
+        onLogin?.(mappedUser!);
       }
     } catch (error) {
-      localStorage.removeItem('user_jwt');
+      console.error('Error checking auth status:', error);
     } finally {
       setLoading(false);
     }
@@ -62,74 +95,59 @@ export const GoogleAuth: React.FC<GoogleAuthProps> = ({ onLogin, onLogout, child
 
   const handleGoogleLogin = async () => {
     try {
-      // First, get the auth URL from the backend
-      const response = await fetch(getApiUrl('api/auth/google'));
-      const data = await response.json();
+      const redirectUrl = `${window.location.origin}/${locale}/auth/callback`;
 
-      if (data.authUrl) {
-        // Redirect to Google's consent page
-        window.location.href = data.authUrl;
-      } else {
-        addNotification({
-          type: 'error',
-          title: 'Login Failed',
-          message: 'Failed to get authentication URL. Please try again.'
-        });
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+
+      if (error) {
+        throw error;
       }
-    } catch (error) {
+
+      // The redirect will happen automatically
+    } catch (error: any) {
+      console.error('Error signing in with Google:', error);
       addNotification({
         type: 'error',
         title: 'Login Failed',
-        message: 'Failed to initiate login. Please try again.'
+        message: error.message || 'Failed to initiate login. Please try again.'
       });
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('user_jwt');
-    setUser(null);
-    onLogout?.();
-    addNotification({
-      type: 'success',
-      title: 'Logged Out',
-      message: 'You have been successfully logged out.'
-    });
-    router.push('/');
-  };
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
 
-  // Handle OAuth callback
-  useEffect(() => {
-    const handleOAuthCallback = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get('token');
-      const error = urlParams.get('error');
-
-      if (token) {
-        localStorage.setItem('user_jwt', token);
-        addNotification({
-          type: 'success',
-          title: 'Login Successful',
-          message: 'Welcome! You have been successfully logged in.'
-        });
-        // Clean up URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-        // Wait for auth check to complete before redirecting
-        await checkAuthStatus();
-        // Redirect to dashboard after successful login
-        router.push(`/${locale}/dashboard`);
-      } else if (error) {
-        addNotification({
-          type: 'error',
-          title: 'Login Failed',
-          message: 'Failed to login with Google. Please try again.'
-        });
-        // Clean up URL
-        window.history.replaceState({}, document.title, window.location.pathname);
+      if (error) {
+        throw error;
       }
-    };
 
-    handleOAuthCallback();
-  }, []);
+      setUser(null);
+      onLogout?.();
+      addNotification({
+        type: 'success',
+        title: 'Logged Out',
+        message: 'You have been successfully logged out.'
+      });
+      router.push('/');
+    } catch (error: any) {
+      console.error('Error signing out:', error);
+      addNotification({
+        type: 'error',
+        title: 'Logout Failed',
+        message: 'Failed to logout. Please try again.'
+      });
+    }
+  };
 
   if (loading) {
     return (
