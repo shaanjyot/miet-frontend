@@ -95,14 +95,21 @@ export default function ConsultationsPage() {
 
   const checkAuthStatus = async () => {
     try {
-      // Check Supabase session first
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError || !session?.user) {
-        // No Supabase session
-        setUser(null);
-        localStorage.removeItem('user_jwt');
-        return;
+      // Try to refresh the session first to ensure we have a valid token
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      let session = refreshData?.session;
+      
+      // If refresh fails, try to get existing session
+      if (!session) {
+        const { data: { session: existingSession }, error: sessionError } = await supabase.auth.getSession();
+        session = existingSession;
+        
+        if (sessionError || !session?.user) {
+          // No Supabase session
+          setUser(null);
+          localStorage.removeItem('user_jwt');
+          return;
+        }
       }
 
       // We have Supabase session - store the access token for API calls
@@ -115,7 +122,7 @@ export default function ConsultationsPage() {
         return;
       }
 
-      // Store Supabase access token for API calls (backend now accepts both)
+      // Store fresh Supabase access token for API calls
       localStorage.setItem('user_jwt', session.access_token);
 
       // Map Supabase user to our user format
@@ -288,23 +295,30 @@ export default function ConsultationsPage() {
     setBookingLoading(true);
 
     try {
-      // Get Supabase session for authentication
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Get fresh Supabase session - refreshSession ensures we have a valid token
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
       
-      if (sessionError || !session?.user) {
-        addNotification({
-          type: 'error',
-          title: 'Authentication Required',
-          message: 'Please log in to book a consultation.'
-        });
-        setShowBookingModal(false);
-        setPendingBookingConsultant(selectedConsultant);
-        setShowLoginModal(true);
-        setBookingLoading(false);
-        return;
+      // If refresh fails, try to get existing session
+      let session = refreshData?.session;
+      if (refreshError || !session) {
+        const { data: { session: existingSession }, error: sessionError } = await supabase.auth.getSession();
+        session = existingSession;
+        
+        if (sessionError || !session?.user) {
+          addNotification({
+            type: 'error',
+            title: 'Authentication Required',
+            message: 'Please log in to book a consultation.'
+          });
+          setShowBookingModal(false);
+          setPendingBookingConsultant(selectedConsultant);
+          setShowLoginModal(true);
+          setBookingLoading(false);
+          return;
+        }
       }
 
-      // Use Supabase access token (backend now accepts both Supabase and backend JWTs)
+      // Use fresh Supabase access token
       const token = session.access_token;
 
       // Use payment-first appointment booking endpoint
