@@ -6,6 +6,7 @@ import { useLocale } from 'next-intl';
 import GoogleAuth from '@/components/GoogleAuth';
 import { useNotifications } from '@/components/NotificationSystem';
 import { getApiUrl } from '@/utils/api';
+import { supabase } from '@/utils/supabase';
 import { FaUserMd, FaClock, FaMapMarkerAlt, FaPhone, FaEnvelope, FaStar, FaCalendarAlt } from 'react-icons/fa';
 import TopBar from '@/components/TopBar';
 import Footer from '@/components/Footer';
@@ -94,27 +95,91 @@ export default function ConsultationsPage() {
 
   const checkAuthStatus = async () => {
     try {
-      const token = localStorage.getItem('user_jwt');
-      if (!token) {
-        setUser(null);
+      // Check Supabase session first
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.user) {
+        // No Supabase session, check for stored backend JWT
+        const token = localStorage.getItem('user_jwt');
+        if (!token) {
+          setUser(null);
+          return;
+        }
+
+        const response = await fetch(getApiUrl('api/auth/profile'), {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData.user || userData);
+        } else {
+          localStorage.removeItem('user_jwt');
+          setUser(null);
+        }
         return;
       }
 
-      const response = await fetch(getApiUrl('api/auth/profile'), {
+      // We have Supabase session, exchange for backend JWT
+      const supabaseUser = session.user;
+      const email = supabaseUser.email;
+      const supabaseUserId = supabaseUser.id;
+
+      // Try to get backend JWT from exchange endpoint
+      const exchangeResponse = await fetch(getApiUrl('api/auth/supabase-token'), {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email,
+          supabase_user_id: supabaseUserId
+        })
       });
 
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
+      if (exchangeResponse.ok) {
+        const exchangeData = await exchangeResponse.json();
+        // Store backend JWT
+        localStorage.setItem('user_jwt', exchangeData.token);
+        
+        // Set user from exchange response
+        if (exchangeData.user) {
+          setUser(exchangeData.user);
+        } else {
+          // Fallback: map Supabase user
+          const fullName = supabaseUser.user_metadata?.full_name ||
+            supabaseUser.user_metadata?.name ||
+            email.split('@')[0] ||
+            'User';
+          const nameParts = fullName.split(' ');
+          setUser({
+            id: parseInt(supabaseUserId) || 0,
+            first_name: nameParts[0] || '',
+            last_name: nameParts.slice(1).join(' ') || '',
+            email: email || '',
+            phone: supabaseUser.user_metadata?.phone || undefined
+          });
+        }
       } else {
-        localStorage.removeItem('user_jwt');
-        setUser(null);
+        // Exchange failed, try using Supabase token directly
+        const token = session.access_token;
+        const response = await fetch(getApiUrl('api/auth/profile'), {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData.user || userData);
+        } else {
+          setUser(null);
+        }
       }
     } catch (error) {
-
+      console.error('Error checking auth:', error);
       localStorage.removeItem('user_jwt');
       setUser(null);
     }
@@ -266,23 +331,51 @@ export default function ConsultationsPage() {
       return;
     }
 
-    // Check if user is authenticated
-    const token = localStorage.getItem('user_jwt');
-    if (!token || token === 'null' || token === 'undefined') {
-      addNotification({
-        type: 'error',
-        title: 'Authentication Required',
-        message: 'Please log in to book a consultation.'
-      });
-      setShowBookingModal(false);
-      setPendingBookingConsultant(selectedConsultant);
-      setShowLoginModal(true);
-      return;
-    }
-
     setBookingLoading(true);
 
     try {
+      // Get authentication token (backend JWT or Supabase token)
+      let token = localStorage.getItem('user_jwt');
+      
+      // If no backend JWT, try to get Supabase session and exchange it
+      if (!token || token === 'null' || token === 'undefined') {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session?.user) {
+          addNotification({
+            type: 'error',
+            title: 'Authentication Required',
+            message: 'Please log in to book a consultation.'
+          });
+          setShowBookingModal(false);
+          setPendingBookingConsultant(selectedConsultant);
+          setShowLoginModal(true);
+          setBookingLoading(false);
+          return;
+        }
+
+        // Exchange Supabase session for backend JWT
+        const exchangeResponse = await fetch(getApiUrl('api/auth/supabase-token'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: session.user.email,
+            supabase_user_id: session.user.id
+          })
+        });
+
+        if (exchangeResponse.ok) {
+          const exchangeData = await exchangeResponse.json();
+          token = exchangeData.token;
+          localStorage.setItem('user_jwt', token);
+        } else {
+          // Fallback to Supabase token if exchange fails
+          token = session.access_token;
+        }
+      }
+
       // Use payment-first appointment booking endpoint
       const response = await fetch(`${getApiUrl('api/appointments/payment-first')}`, {
         method: 'POST',
