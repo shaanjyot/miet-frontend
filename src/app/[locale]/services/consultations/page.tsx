@@ -266,11 +266,24 @@ export default function ConsultationsPage() {
       return;
     }
 
+    // Check if user is authenticated
+    const token = localStorage.getItem('user_jwt');
+    if (!token || token === 'null' || token === 'undefined') {
+      addNotification({
+        type: 'error',
+        title: 'Authentication Required',
+        message: 'Please log in to book a consultation.'
+      });
+      setShowBookingModal(false);
+      setPendingBookingConsultant(selectedConsultant);
+      setShowLoginModal(true);
+      return;
+    }
+
     setBookingLoading(true);
 
     try {
       // Use payment-first appointment booking endpoint
-      const token = localStorage.getItem('user_jwt');
       const response = await fetch(`${getApiUrl('api/appointments/payment-first')}`, {
         method: 'POST',
         headers: {
@@ -295,12 +308,25 @@ export default function ConsultationsPage() {
           message: 'Please complete payment to confirm your appointment.'
         });
       } else {
-        const errorData = await response.json();
-        addNotification({
-          type: 'error',
-          title: 'Error',
-          message: `Failed to create appointment: ${errorData.message || 'Unknown error'}`
-        });
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        
+        // Handle authentication errors
+        if (response.status === 401 || response.status === 403) {
+          addNotification({
+            type: 'error',
+            title: 'Authentication Required',
+            message: errorData.message || 'Please log in to book a consultation.'
+          });
+          setShowBookingModal(false);
+          setPendingBookingConsultant(selectedConsultant);
+          setShowLoginModal(true);
+        } else {
+          addNotification({
+            type: 'error',
+            title: 'Error',
+            message: `Failed to create appointment: ${errorData.message || errorData.error || 'Unknown error'}`
+          });
+        }
       }
     } catch (error) {
 
