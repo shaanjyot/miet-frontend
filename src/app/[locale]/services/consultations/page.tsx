@@ -99,33 +99,15 @@ export default function ConsultationsPage() {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
       if (sessionError || !session?.user) {
-        // No Supabase session, check for stored backend JWT
-        const token = localStorage.getItem('user_jwt');
-        if (!token) {
-          setUser(null);
-          return;
-        }
-
-        const response = await fetch(getApiUrl('api/auth/profile'), {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData.user || userData);
-        } else {
-          localStorage.removeItem('user_jwt');
-          setUser(null);
-        }
+        // No Supabase session
+        setUser(null);
+        localStorage.removeItem('user_jwt');
         return;
       }
 
-      // We have Supabase session, exchange for backend JWT
+      // We have Supabase session - store the access token for API calls
       const supabaseUser = session.user;
       const email = supabaseUser.email || '';
-      const supabaseUserId = supabaseUser.id;
 
       if (!email) {
         console.error('No email found in Supabase session');
@@ -133,58 +115,23 @@ export default function ConsultationsPage() {
         return;
       }
 
-      // Try to get backend JWT from exchange endpoint
-      const exchangeResponse = await fetch(getApiUrl('api/auth/supabase-token'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email,
-          supabase_user_id: supabaseUserId
-        })
+      // Store Supabase access token for API calls (backend now accepts both)
+      localStorage.setItem('user_jwt', session.access_token);
+
+      // Map Supabase user to our user format
+      const fullName = supabaseUser.user_metadata?.full_name ||
+        supabaseUser.user_metadata?.name ||
+        email.split('@')[0] ||
+        'User';
+      const nameParts = fullName.split(' ');
+      
+      setUser({
+        id: parseInt(supabaseUser.id) || 0,
+        first_name: nameParts[0] || '',
+        last_name: nameParts.slice(1).join(' ') || '',
+        email: email,
+        phone: supabaseUser.user_metadata?.phone || undefined
       });
-
-      if (exchangeResponse.ok) {
-        const exchangeData = await exchangeResponse.json();
-        // Store backend JWT
-        localStorage.setItem('user_jwt', exchangeData.token);
-        
-        // Set user from exchange response
-        if (exchangeData.user) {
-          setUser(exchangeData.user);
-        } else {
-          // Fallback: map Supabase user
-          const userEmail = email || supabaseUser.email || '';
-          const fullName = supabaseUser.user_metadata?.full_name ||
-            supabaseUser.user_metadata?.name ||
-            (userEmail ? userEmail.split('@')[0] : '') ||
-            'User';
-          const nameParts = fullName.split(' ');
-          setUser({
-            id: parseInt(supabaseUserId) || 0,
-            first_name: nameParts[0] || '',
-            last_name: nameParts.slice(1).join(' ') || '',
-            email: userEmail,
-            phone: supabaseUser.user_metadata?.phone || undefined
-          });
-        }
-      } else {
-        // Exchange failed, try using Supabase token directly
-        const token = session.access_token;
-        const response = await fetch(getApiUrl('api/auth/profile'), {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData.user || userData);
-        } else {
-          setUser(null);
-        }
-      }
     } catch (error) {
       console.error('Error checking auth:', error);
       localStorage.removeItem('user_jwt');
@@ -341,70 +288,10 @@ export default function ConsultationsPage() {
     setBookingLoading(true);
 
     try {
-      // Get authentication token (backend JWT or Supabase token)
-      let token: string | null = localStorage.getItem('user_jwt');
+      // Get Supabase session for authentication
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      // If no backend JWT, try to get Supabase session and exchange it
-      if (!token || token === 'null' || token === 'undefined') {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError || !session?.user) {
-          addNotification({
-            type: 'error',
-            title: 'Authentication Required',
-            message: 'Please log in to book a consultation.'
-          });
-          setShowBookingModal(false);
-          setPendingBookingConsultant(selectedConsultant);
-          setShowLoginModal(true);
-          setBookingLoading(false);
-          return;
-        }
-
-        // Exchange Supabase session for backend JWT
-        const userEmail = session.user.email;
-        if (!userEmail) {
-          addNotification({
-            type: 'error',
-            title: 'Authentication Error',
-            message: 'No email found in session. Please log in again.'
-          });
-          setShowBookingModal(false);
-          setPendingBookingConsultant(selectedConsultant);
-          setShowLoginModal(true);
-          setBookingLoading(false);
-          return;
-        }
-
-        const exchangeResponse = await fetch(getApiUrl('api/auth/supabase-token'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            email: userEmail,
-            supabase_user_id: session.user.id || ''
-          })
-        });
-
-        if (exchangeResponse.ok) {
-          const exchangeData = await exchangeResponse.json();
-          const backendToken = exchangeData.token;
-          if (backendToken && typeof backendToken === 'string') {
-            token = backendToken;
-            localStorage.setItem('user_jwt', token);
-          } else {
-            token = null;
-          }
-        } else {
-          // Fallback to Supabase token if exchange fails
-          const supabaseToken = session.access_token;
-          token = supabaseToken && typeof supabaseToken === 'string' ? supabaseToken : null;
-        }
-      }
-
-      // Ensure we have a valid token before making the API call
-      if (!token) {
+      if (sessionError || !session?.user) {
         addNotification({
           type: 'error',
           title: 'Authentication Required',
@@ -416,6 +303,9 @@ export default function ConsultationsPage() {
         setBookingLoading(false);
         return;
       }
+
+      // Use Supabase access token (backend now accepts both Supabase and backend JWTs)
+      const token = session.access_token;
 
       // Use payment-first appointment booking endpoint
       const response = await fetch(`${getApiUrl('api/appointments/payment-first')}`, {
