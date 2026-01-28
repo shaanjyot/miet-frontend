@@ -124,8 +124,14 @@ export default function ConsultationsPage() {
 
       // We have Supabase session, exchange for backend JWT
       const supabaseUser = session.user;
-      const email = supabaseUser.email;
+      const email = supabaseUser.email || '';
       const supabaseUserId = supabaseUser.id;
+
+      if (!email) {
+        console.error('No email found in Supabase session');
+        setUser(null);
+        return;
+      }
 
       // Try to get backend JWT from exchange endpoint
       const exchangeResponse = await fetch(getApiUrl('api/auth/supabase-token'), {
@@ -149,16 +155,17 @@ export default function ConsultationsPage() {
           setUser(exchangeData.user);
         } else {
           // Fallback: map Supabase user
+          const userEmail = email || supabaseUser.email || '';
           const fullName = supabaseUser.user_metadata?.full_name ||
             supabaseUser.user_metadata?.name ||
-            email.split('@')[0] ||
+            (userEmail ? userEmail.split('@')[0] : '') ||
             'User';
           const nameParts = fullName.split(' ');
           setUser({
             id: parseInt(supabaseUserId) || 0,
             first_name: nameParts[0] || '',
             last_name: nameParts.slice(1).join(' ') || '',
-            email: email || '',
+            email: userEmail,
             phone: supabaseUser.user_metadata?.phone || undefined
           });
         }
@@ -335,7 +342,7 @@ export default function ConsultationsPage() {
 
     try {
       // Get authentication token (backend JWT or Supabase token)
-      let token = localStorage.getItem('user_jwt');
+      let token: string | null = localStorage.getItem('user_jwt');
       
       // If no backend JWT, try to get Supabase session and exchange it
       if (!token || token === 'null' || token === 'undefined') {
@@ -355,25 +362,59 @@ export default function ConsultationsPage() {
         }
 
         // Exchange Supabase session for backend JWT
+        const userEmail = session.user.email;
+        if (!userEmail) {
+          addNotification({
+            type: 'error',
+            title: 'Authentication Error',
+            message: 'No email found in session. Please log in again.'
+          });
+          setShowBookingModal(false);
+          setPendingBookingConsultant(selectedConsultant);
+          setShowLoginModal(true);
+          setBookingLoading(false);
+          return;
+        }
+
         const exchangeResponse = await fetch(getApiUrl('api/auth/supabase-token'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            email: session.user.email,
-            supabase_user_id: session.user.id
+            email: userEmail,
+            supabase_user_id: session.user.id || ''
           })
         });
 
         if (exchangeResponse.ok) {
           const exchangeData = await exchangeResponse.json();
-          token = exchangeData.token;
-          localStorage.setItem('user_jwt', token);
+          const backendToken = exchangeData.token;
+          if (backendToken && typeof backendToken === 'string') {
+            token = backendToken;
+            localStorage.setItem('user_jwt', token);
+          } else {
+            token = null;
+          }
         } else {
           // Fallback to Supabase token if exchange fails
-          token = session.access_token;
+          const supabaseToken = session.access_token;
+          token = supabaseToken && typeof supabaseToken === 'string' ? supabaseToken : null;
         }
+      }
+
+      // Ensure we have a valid token before making the API call
+      if (!token) {
+        addNotification({
+          type: 'error',
+          title: 'Authentication Required',
+          message: 'Please log in to book a consultation.'
+        });
+        setShowBookingModal(false);
+        setPendingBookingConsultant(selectedConsultant);
+        setShowLoginModal(true);
+        setBookingLoading(false);
+        return;
       }
 
       // Use payment-first appointment booking endpoint
