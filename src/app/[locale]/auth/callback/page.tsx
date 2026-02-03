@@ -26,11 +26,32 @@ export default function AuthCallback() {
           return;
         }
 
-        // Handle the OAuth callback - Supabase automatically processes the URL hash
+        // Check for authorization code (PKCE flow)
+        const code = searchParams.get('code');
+
+        if (code) {
+          // Exchange the code for a session
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+          if (exchangeError) {
+            setError(exchangeError.message);
+            setTimeout(() => {
+              router.push(`/${locale}?error=auth_failed`);
+            }, 3000);
+            return;
+          }
+
+          if (data.session) {
+            // Successfully authenticated - redirect to dashboard
+            router.push(`/${locale}/dashboard`);
+            return;
+          }
+        }
+
+        // Fallback: Check for existing session (in case tokens are in URL hash)
         const { data, error: sessionError } = await supabase.auth.getSession();
 
         if (sessionError) {
-          console.error('Error getting session:', sessionError);
           setError(sessionError.message);
           setTimeout(() => {
             router.push(`/${locale}?error=auth_failed`);
@@ -57,7 +78,6 @@ export default function AuthCallback() {
           }, 1000);
         }
       } catch (err: any) {
-        console.error('Error handling auth callback:', err);
         setError(err.message || 'Authentication failed');
         setTimeout(() => {
           router.push(`/${locale}?error=auth_failed`);

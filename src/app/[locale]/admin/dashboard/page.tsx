@@ -232,6 +232,7 @@ export default function AdminDashboard() {
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
   });
   const [consultantSlots, setConsultantSlots] = useState<{ date: string; time: string; endTime?: string }[]>([]);
+  const [slotDuration, setSlotDuration] = useState<number>(60); // Default 60 minutes
   // Users state
   const [users, setUsers] = useState<User[]>([]);
   const [userForm, setUserForm] = useState<{ id?: number; username: string; password?: string; role: string }>({ username: '', password: '', role: 'consultant' });
@@ -1157,12 +1158,75 @@ export default function AdminDashboard() {
     );
   };
 
+  // Helper function to calculate end time based on start time and duration
+  const calculateEndTime = (startTime: string, durationMinutes: number): string => {
+    if (!startTime) return '';
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes + durationMinutes;
+    const endHours = Math.floor(totalMinutes / 60) % 24;
+    const endMinutes = totalMinutes % 60;
+    return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+  };
+
   // Add, edit, and remove slot handlers
   const handleAddSlot = () => {
     setConsultantSlots(slots => [...slots, { date: '', time: '', endTime: '' }]);
   };
+
+  // Add slot with auto-calculated end time
+  const handleAddSlotWithDuration = (date: string, startTime: string) => {
+    const endTime = calculateEndTime(startTime, slotDuration);
+    setConsultantSlots(slots => [...slots, { date, time: startTime, endTime }]);
+  };
+
+  // Quick add multiple slots for a time period
+  const handleQuickAddSlots = (date: string, period: 'morning' | 'afternoon' | 'evening') => {
+    if (!date) return;
+
+    const periodTimes: { [key: string]: string[] } = {
+      morning: ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00'],
+      afternoon: ['12:00', '13:00', '14:00', '15:00', '16:00'],
+      evening: ['17:00', '18:00', '19:00', '20:00']
+    };
+
+    // Filter times based on duration to avoid overlap
+    const times = periodTimes[period];
+    const newSlots: { date: string; time: string; endTime: string }[] = [];
+
+    for (let i = 0; i < times.length; i++) {
+      const startTime = times[i];
+      const endTime = calculateEndTime(startTime, slotDuration);
+
+      // Check if end time exceeds period boundary
+      const endHour = parseInt(endTime.split(':')[0]);
+      if (period === 'morning' && endHour > 12) continue;
+      if (period === 'afternoon' && endHour > 17) continue;
+      if (period === 'evening' && endHour > 21) continue;
+
+      // Check if slot already exists
+      const exists = consultantSlots.some(
+        slot => slot.date === date && slot.time === startTime
+      );
+      if (!exists) {
+        newSlots.push({ date, time: startTime, endTime });
+      }
+    }
+
+    if (newSlots.length > 0) {
+      setConsultantSlots(slots => [...slots, ...newSlots]);
+    }
+  };
+
   const handleSlotChange = (idx: number, field: string, value: string) => {
-    setConsultantSlots(slots => slots.map((slot, i) => i === idx ? { ...slot, [field]: value } : slot));
+    setConsultantSlots(slots => slots.map((slot, i) => {
+      if (i !== idx) return slot;
+      const updatedSlot = { ...slot, [field]: value };
+      // Auto-calculate end time when start time changes and duration is set
+      if (field === 'time' && value && slotDuration) {
+        updatedSlot.endTime = calculateEndTime(value, slotDuration);
+      }
+      return updatedSlot;
+    }));
   };
   const handleRemoveSlot = (idx: number) => {
     setConsultantSlots(slots => slots.filter((_, i) => i !== idx));
@@ -3443,102 +3507,268 @@ export default function AdminDashboard() {
                     <div>
                       <label style={{ fontWeight: 600, color: '#374151', marginBottom: '12px', display: 'block' }}>Appointment Calendar</label>
                       <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid rgba(102, 126, 234, 0.2)' }}>
-                        <div style={{ marginBottom: '16px' }}>
-                          <label style={{ fontWeight: 600, color: '#374151', marginBottom: '8px', display: 'block' }}>Available Time Slots</label>
-                          {consultantSlots.length === 0 && <div style={{ color: '#6b7280', fontSize: '14px', textAlign: 'center', padding: '20px' }}>No slots added yet.</div>}
-                          {consultantSlots.map((slot, idx) => (
-                            <div key={idx} style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '12px',
-                              marginBottom: '12px',
-                              padding: '16px',
-                              background: '#fff',
-                              borderRadius: '8px',
-                              border: '1px solid rgba(102, 126, 234, 0.2)',
-                              flexWrap: 'wrap'
-                            }}>
+
+                        {/* Duration Selector */}
+                        <div style={{ marginBottom: '20px', padding: '16px', background: '#fff', borderRadius: '8px', border: '1px solid rgba(102, 126, 234, 0.2)' }}>
+                          <label style={{ fontWeight: 600, color: '#374151', marginBottom: '8px', display: 'block' }}>Slot Duration</label>
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {[
+                              { value: 30, label: '30 min' },
+                              { value: 45, label: '45 min' },
+                              { value: 60, label: '1 hour' },
+                              { value: 90, label: '1.5 hours' },
+                              { value: 120, label: '2 hours' }
+                            ].map(option => (
+                              <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => setSlotDuration(option.value)}
+                                style={{
+                                  padding: '8px 16px',
+                                  borderRadius: '6px',
+                                  border: slotDuration === option.value ? '2px solid #667eea' : '1px solid #ddd',
+                                  background: slotDuration === option.value ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#fff',
+                                  color: slotDuration === option.value ? '#fff' : '#374151',
+                                  fontWeight: 600,
+                                  fontSize: '13px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                              >
+                                {option.label}
+                              </button>
+                            ))}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                            End time will be auto-calculated based on selected duration
+                          </div>
+                        </div>
+
+                        {/* Quick Add Slots */}
+                        <div style={{ marginBottom: '20px', padding: '16px', background: '#fff', borderRadius: '8px', border: '1px solid rgba(102, 126, 234, 0.2)' }}>
+                          <label style={{ fontWeight: 600, color: '#374151', marginBottom: '8px', display: 'block' }}>Quick Add Slots</label>
+                          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                            <div>
+                              <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Select Date</label>
                               <input
                                 type="date"
-                                value={slot.date}
-                                onChange={e => handleSlotChange(idx, 'date', e.target.value)}
+                                id="quickAddDate"
+                                min={new Date().toISOString().split('T')[0]}
                                 style={{
                                   padding: '8px 12px',
                                   borderRadius: '6px',
                                   border: '1px solid rgba(102, 126, 234, 0.2)',
-                                  fontSize: '14px',
-                                  minWidth: '140px'
+                                  fontSize: '14px'
                                 }}
                               />
-                              <input
-                                type="time"
-                                value={slot.time}
-                                onChange={e => handleSlotChange(idx, 'time', e.target.value)}
-                                style={{
-                                  padding: '8px 12px',
-                                  borderRadius: '6px',
-                                  border: '1px solid rgba(102, 126, 234, 0.2)',
-                                  fontSize: '14px',
-                                  minWidth: '120px'
-                                }}
-                              />
-                              <input
-                                type="time"
-                                value={slot.endTime || ''}
-                                onChange={e => handleSlotChange(idx, 'endTime', e.target.value)}
-                                placeholder="End time (optional)"
-                                style={{
-                                  padding: '8px 12px',
-                                  borderRadius: '6px',
-                                  border: '1px solid rgba(102, 126, 234, 0.2)',
-                                  fontSize: '14px',
-                                  minWidth: '120px'
-                                }}
-                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const dateInput = document.getElementById('quickAddDate') as HTMLInputElement;
+                                if (dateInput?.value) handleQuickAddSlots(dateInput.value, 'morning');
+                              }}
+                              style={{
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                border: '1px solid #f59e0b',
+                                background: '#fef3c7',
+                                color: '#92400e',
+                                fontWeight: 600,
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              🌅 Morning
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const dateInput = document.getElementById('quickAddDate') as HTMLInputElement;
+                                if (dateInput?.value) handleQuickAddSlots(dateInput.value, 'afternoon');
+                              }}
+                              style={{
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                border: '1px solid #3b82f6',
+                                background: '#dbeafe',
+                                color: '#1e40af',
+                                fontWeight: 600,
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              ☀️ Afternoon
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const dateInput = document.getElementById('quickAddDate') as HTMLInputElement;
+                                if (dateInput?.value) handleQuickAddSlots(dateInput.value, 'evening');
+                              }}
+                              style={{
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                border: '1px solid #8b5cf6',
+                                background: '#ede9fe',
+                                color: '#5b21b6',
+                                fontWeight: 600,
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              🌙 Evening
+                            </button>
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                            Click a period to add all slots for that time range (6-12 AM, 12-5 PM, 5-9 PM)
+                          </div>
+                        </div>
+
+                        {/* Existing Slots List */}
+                        <div style={{ marginBottom: '16px' }}>
+                          <label style={{ fontWeight: 600, color: '#374151', marginBottom: '8px', display: 'block' }}>
+                            Available Time Slots ({consultantSlots.length})
+                          </label>
+                          {consultantSlots.length === 0 && <div style={{ color: '#6b7280', fontSize: '14px', textAlign: 'center', padding: '20px' }}>No slots added yet. Use Quick Add or Add Time Slot below.</div>}
+
+                          {/* Group slots by date */}
+                          {(() => {
+                            const slotsByDate = consultantSlots.reduce((acc, slot, idx) => {
+                              if (!acc[slot.date]) acc[slot.date] = [];
+                              acc[slot.date].push({ ...slot, idx });
+                              return acc;
+                            }, {} as { [date: string]: (typeof consultantSlots[0] & { idx: number })[] });
+
+                            return Object.entries(slotsByDate)
+                              .sort(([a], [b]) => a.localeCompare(b))
+                              .map(([date, slots]) => (
+                                <div key={date} style={{ marginBottom: '16px' }}>
+                                  <div style={{
+                                    fontSize: '13px',
+                                    fontWeight: 600,
+                                    color: '#667eea',
+                                    marginBottom: '8px',
+                                    padding: '4px 8px',
+                                    background: '#f0f4ff',
+                                    borderRadius: '4px',
+                                    display: 'inline-block'
+                                  }}>
+                                    {date ? new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'No date set'}
+                                  </div>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                    {slots.map((slot) => (
+                                      <div key={slot.idx} style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '8px 12px',
+                                        background: '#fff',
+                                        borderRadius: '6px',
+                                        border: '1px solid rgba(102, 126, 234, 0.2)',
+                                        fontSize: '13px'
+                                      }}>
+                                        <span style={{ fontWeight: 500 }}>{slot.time} - {slot.endTime || '?'}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveSlot(slot.idx)}
+                                          style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: '#e53e3e',
+                                            cursor: 'pointer',
+                                            padding: '2px 6px',
+                                            borderRadius: '4px',
+                                            fontSize: '14px',
+                                            fontWeight: 'bold'
+                                          }}
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ));
+                          })()}
+
+                          {/* Manual Add Slot */}
+                          <div style={{
+                            marginTop: '16px',
+                            padding: '12px',
+                            background: '#fff',
+                            borderRadius: '8px',
+                            border: '1px dashed rgba(102, 126, 234, 0.3)'
+                          }}>
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>Add Individual Slot</div>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                              <div>
+                                <label style={{ fontSize: '11px', color: '#6b7280', display: 'block', marginBottom: '2px' }}>Date</label>
+                                <input
+                                  type="date"
+                                  id="manualSlotDate"
+                                  min={new Date().toISOString().split('T')[0]}
+                                  style={{
+                                    padding: '6px 10px',
+                                    borderRadius: '6px',
+                                    border: '1px solid rgba(102, 126, 234, 0.2)',
+                                    fontSize: '13px'
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: '11px', color: '#6b7280', display: 'block', marginBottom: '2px' }}>Start Time</label>
+                                <input
+                                  type="time"
+                                  id="manualSlotTime"
+                                  style={{
+                                    padding: '6px 10px',
+                                    borderRadius: '6px',
+                                    border: '1px solid rgba(102, 126, 234, 0.2)',
+                                    fontSize: '13px'
+                                  }}
+                                />
+                              </div>
                               <button
                                 type="button"
-                                onClick={() => handleRemoveSlot(idx)}
+                                onClick={() => {
+                                  const dateInput = document.getElementById('manualSlotDate') as HTMLInputElement;
+                                  const timeInput = document.getElementById('manualSlotTime') as HTMLInputElement;
+                                  if (dateInput?.value && timeInput?.value) {
+                                    handleAddSlotWithDuration(dateInput.value, timeInput.value);
+                                    timeInput.value = '';
+                                  }
+                                }}
                                 style={{
-                                  background: '#e53e3e',
+                                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                                   color: '#fff',
                                   border: 'none',
                                   borderRadius: '6px',
                                   padding: '8px 16px',
                                   fontWeight: 600,
-                                  fontSize: '14px',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.2s ease'
+                                  fontSize: '13px',
+                                  cursor: 'pointer'
                                 }}
-                                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
-                                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                               >
-                                Remove
+                                Add Slot
                               </button>
                             </div>
-                          ))}
-                          <button
-                            type="button"
-                            onClick={handleAddSlot}
-                            style={{
-                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '8px',
-                              padding: '12px 20px',
-                              fontWeight: 700,
-                              fontSize: '14px',
-                              cursor: 'pointer',
-                              marginTop: '8px',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                          >
-                            Add Time Slot
-                          </button>
+                            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '6px' }}>
+                              End time: auto-calculated ({slotDuration} min duration)
+                            </div>
+                          </div>
                         </div>
                         <div style={{ fontSize: '13px', color: '#667eea', textAlign: 'center' }}>
-                          Add available time slots for appointments. You can set start and end times for each date.
+                          Slots are organized by date. Past dates cannot be selected.
                         </div>
                       </div>
                     </div>

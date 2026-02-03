@@ -50,6 +50,64 @@ interface AvailabilitySlot {
   end_time: string;
 }
 
+// Time period categories
+type TimePeriod = 'morning' | 'afternoon' | 'evening';
+
+// Helper function to get time period from time string (HH:MM)
+const getTimePeriod = (time: string): TimePeriod => {
+  const hour = parseInt(time.split(':')[0], 10);
+  if (hour >= 6 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 17) return 'afternoon';
+  return 'evening';
+};
+
+// Helper function to check if a slot is in the past
+const isSlotInPast = (date: string, startTime: string): boolean => {
+  const now = new Date();
+  const slotDateTime = new Date(`${date}T${startTime}`);
+  return slotDateTime <= now;
+};
+
+// Helper function to format date for display
+const formatDateForDisplay = (dateString: string): string => {
+  const date = new Date(dateString);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  if (date.toDateString() === today.toDateString()) {
+    return 'Today';
+  } else if (date.toDateString() === tomorrow.toDateString()) {
+    return 'Tomorrow';
+  } else {
+    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+};
+
+// Group slots by date and time period
+const groupSlotsByDateAndPeriod = (slots: AvailabilitySlot[]): Map<string, { morning: AvailabilitySlot[], afternoon: AvailabilitySlot[], evening: AvailabilitySlot[] }> => {
+  const grouped = new Map<string, { morning: AvailabilitySlot[], afternoon: AvailabilitySlot[], evening: AvailabilitySlot[] }>();
+
+  // Filter out past slots and sort by date
+  const futureSlots = slots
+    .filter(slot => !isSlotInPast(slot.date, slot.start_time))
+    .sort((a, b) => {
+      const dateCompare = a.date.localeCompare(b.date);
+      if (dateCompare !== 0) return dateCompare;
+      return a.start_time.localeCompare(b.start_time);
+    });
+
+  futureSlots.forEach(slot => {
+    if (!grouped.has(slot.date)) {
+      grouped.set(slot.date, { morning: [], afternoon: [], evening: [] });
+    }
+    const period = getTimePeriod(slot.start_time);
+    grouped.get(slot.date)![period].push(slot);
+  });
+
+  return grouped;
+};
+
 export default function ConsultationsPage() {
   const [consultants, setConsultants] = useState<Consultant[]>([]);
   const [selectedConsultant, setSelectedConsultant] = useState<Consultant | null>(null);
@@ -70,6 +128,7 @@ export default function ConsultationsPage() {
   // Availability states
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [consultationForm, setConsultationForm] = useState<ConsultationForm>({
     consultant_id: 0,
     title: '',
@@ -98,12 +157,12 @@ export default function ConsultationsPage() {
       // Try to refresh the session first to ensure we have a valid token
       const { data: refreshData } = await supabase.auth.refreshSession();
       let session = refreshData?.session;
-      
+
       // If refresh fails, try to get existing session
       if (!session) {
         const { data: { session: existingSession }, error: sessionError } = await supabase.auth.getSession();
         session = existingSession;
-        
+
         if (sessionError || !session?.user) {
           // No Supabase session
           setUser(null);
@@ -131,7 +190,7 @@ export default function ConsultationsPage() {
         email.split('@')[0] ||
         'User';
       const nameParts = fullName.split(' ');
-      
+
       setUser({
         id: parseInt(supabaseUser.id) || 0,
         first_name: nameParts[0] || '',
@@ -297,13 +356,13 @@ export default function ConsultationsPage() {
     try {
       // Get fresh Supabase session - refreshSession ensures we have a valid token
       const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      
+
       // If refresh fails, try to get existing session
       let session = refreshData?.session;
       if (refreshError || !session) {
         const { data: { session: existingSession }, error: sessionError } = await supabase.auth.getSession();
         session = existingSession;
-        
+
         if (sessionError || !session?.user) {
           addNotification({
             type: 'error',
@@ -347,7 +406,7 @@ export default function ConsultationsPage() {
         });
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        
+
         // Handle authentication errors
         if (response.status === 401 || response.status === 403) {
           addNotification({
@@ -877,82 +936,301 @@ export default function ConsultationsPage() {
                   />
                 </div>
 
-                {/* Availability Selection */}
+                {/* Availability Selection with Calendar View */}
                 <div>
                   <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>
-                    Available Time Slots *
+                    Select Date & Time Slot *
                   </label>
-                  {availabilitySlots.length > 0 ? (
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                      gap: '12px',
-                      maxHeight: '200px',
-                      overflowY: 'auto',
-                      border: '2px solid rgba(102, 126, 234, 0.2)',
-                      borderRadius: '8px',
-                      padding: '12px'
-                    }}>
-                      {availabilitySlots.map((slot) => (
-                        <button
-                          key={slot.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedSlot(slot);
-                            const startDateTime = `${slot.date}T${slot.start_time}`;
-                            const endDateTime = `${slot.date}T${slot.end_time}`;
-                            setConsultationForm(prev => ({
-                              ...prev,
-                              start_time: startDateTime,
-                              end_time: endDateTime,
-                              duration_minutes: Math.round((new Date(endDateTime).getTime() - new Date(startDateTime).getTime()) / 60000)
-                            }));
-                          }}
-                          style={{
-                            padding: '12px',
-                            border: selectedSlot?.id === slot.id ? '2px solid #667eea' : '1px solid #ddd',
-                            borderRadius: '8px',
-                            background: selectedSlot?.id === slot.id ? '#f0f4ff' : '#fff',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            fontSize: '14px'
-                          }}
-                        >
-                          <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                            {new Date(slot.date).toLocaleDateString()}
+                  {(() => {
+                    const groupedSlots = groupSlotsByDateAndPeriod(availabilitySlots);
+                    const availableDates = Array.from(groupedSlots.keys());
+
+                    if (availableDates.length === 0) {
+                      return (
+                        <div style={{
+                          padding: '20px',
+                          textAlign: 'center',
+                          color: '#666',
+                          border: '2px dashed #ddd',
+                          borderRadius: '8px'
+                        }}>
+                          No available time slots found for this consultant
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div style={{ border: '2px solid rgba(102, 126, 234, 0.2)', borderRadius: '12px', overflow: 'hidden' }}>
+                        {/* Date Selection */}
+                        <div style={{
+                          background: '#f8f9fa',
+                          padding: '16px',
+                          borderBottom: '1px solid rgba(102, 126, 234, 0.2)'
+                        }}>
+                          <div style={{ fontWeight: '600', marginBottom: '12px', color: '#333', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <FaCalendarAlt style={{ color: '#667eea' }} />
+                            Select a Date
                           </div>
-                          <div style={{ color: '#666' }}>
-                            {slot.start_time} - {slot.end_time}
+                          <div style={{
+                            display: 'flex',
+                            gap: '8px',
+                            overflowX: 'auto',
+                            paddingBottom: '8px'
+                          }}>
+                            {availableDates.map(date => (
+                              <button
+                                key={date}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedDate(date);
+                                  setSelectedSlot(null);
+                                }}
+                                style={{
+                                  padding: '12px 16px',
+                                  border: selectedDate === date ? '2px solid #667eea' : '1px solid #ddd',
+                                  borderRadius: '8px',
+                                  background: selectedDate === date ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#fff',
+                                  color: selectedDate === date ? '#fff' : '#333',
+                                  cursor: 'pointer',
+                                  textAlign: 'center',
+                                  minWidth: '100px',
+                                  transition: 'all 0.2s ease',
+                                  flexShrink: 0
+                                }}
+                              >
+                                <div style={{ fontWeight: '600', fontSize: '14px' }}>
+                                  {formatDateForDisplay(date)}
+                                </div>
+                                <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '2px' }}>
+                                  {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </div>
+                              </button>
+                            ))}
                           </div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{
-                      padding: '20px',
-                      textAlign: 'center',
-                      color: '#666',
-                      border: '2px dashed #ddd',
-                      borderRadius: '8px'
-                    }}>
-                      No availability slots found for this consultant
-                    </div>
-                  )}
+                        </div>
+
+                        {/* Time Slots by Period */}
+                        {selectedDate && groupedSlots.has(selectedDate) && (
+                          <div style={{ padding: '16px' }}>
+                            <div style={{ fontWeight: '600', marginBottom: '12px', color: '#333', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <FaClock style={{ color: '#667eea' }} />
+                              Available Time Slots
+                            </div>
+
+                            {/* Morning Slots */}
+                            {groupedSlots.get(selectedDate)!.morning.length > 0 && (
+                              <div style={{ marginBottom: '16px' }}>
+                                <div style={{
+                                  fontSize: '13px',
+                                  fontWeight: '600',
+                                  color: '#f59e0b',
+                                  marginBottom: '8px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px'
+                                }}>
+                                  🌅 Morning (6 AM - 12 PM)
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                  {groupedSlots.get(selectedDate)!.morning.map(slot => (
+                                    <button
+                                      key={slot.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedSlot(slot);
+                                        const startDateTime = `${slot.date}T${slot.start_time}`;
+                                        const endDateTime = `${slot.date}T${slot.end_time}`;
+                                        setConsultationForm(prev => ({
+                                          ...prev,
+                                          start_time: startDateTime,
+                                          end_time: endDateTime,
+                                          duration_minutes: Math.round((new Date(endDateTime).getTime() - new Date(startDateTime).getTime()) / 60000)
+                                        }));
+                                      }}
+                                      style={{
+                                        padding: '10px 16px',
+                                        border: selectedSlot?.id === slot.id ? '2px solid #667eea' : '1px solid #e5e7eb',
+                                        borderRadius: '8px',
+                                        background: selectedSlot?.id === slot.id ? '#f0f4ff' : '#fff',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        fontWeight: selectedSlot?.id === slot.id ? '600' : '400',
+                                        color: '#333',
+                                        transition: 'all 0.2s ease'
+                                      }}
+                                    >
+                                      {slot.start_time} - {slot.end_time}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Afternoon Slots */}
+                            {groupedSlots.get(selectedDate)!.afternoon.length > 0 && (
+                              <div style={{ marginBottom: '16px' }}>
+                                <div style={{
+                                  fontSize: '13px',
+                                  fontWeight: '600',
+                                  color: '#3b82f6',
+                                  marginBottom: '8px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px'
+                                }}>
+                                  ☀️ Afternoon (12 PM - 5 PM)
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                  {groupedSlots.get(selectedDate)!.afternoon.map(slot => (
+                                    <button
+                                      key={slot.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedSlot(slot);
+                                        const startDateTime = `${slot.date}T${slot.start_time}`;
+                                        const endDateTime = `${slot.date}T${slot.end_time}`;
+                                        setConsultationForm(prev => ({
+                                          ...prev,
+                                          start_time: startDateTime,
+                                          end_time: endDateTime,
+                                          duration_minutes: Math.round((new Date(endDateTime).getTime() - new Date(startDateTime).getTime()) / 60000)
+                                        }));
+                                      }}
+                                      style={{
+                                        padding: '10px 16px',
+                                        border: selectedSlot?.id === slot.id ? '2px solid #667eea' : '1px solid #e5e7eb',
+                                        borderRadius: '8px',
+                                        background: selectedSlot?.id === slot.id ? '#f0f4ff' : '#fff',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        fontWeight: selectedSlot?.id === slot.id ? '600' : '400',
+                                        color: '#333',
+                                        transition: 'all 0.2s ease'
+                                      }}
+                                    >
+                                      {slot.start_time} - {slot.end_time}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Evening Slots */}
+                            {groupedSlots.get(selectedDate)!.evening.length > 0 && (
+                              <div>
+                                <div style={{
+                                  fontSize: '13px',
+                                  fontWeight: '600',
+                                  color: '#8b5cf6',
+                                  marginBottom: '8px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px'
+                                }}>
+                                  🌙 Evening (5 PM - 9 PM)
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                  {groupedSlots.get(selectedDate)!.evening.map(slot => (
+                                    <button
+                                      key={slot.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedSlot(slot);
+                                        const startDateTime = `${slot.date}T${slot.start_time}`;
+                                        const endDateTime = `${slot.date}T${slot.end_time}`;
+                                        setConsultationForm(prev => ({
+                                          ...prev,
+                                          start_time: startDateTime,
+                                          end_time: endDateTime,
+                                          duration_minutes: Math.round((new Date(endDateTime).getTime() - new Date(startDateTime).getTime()) / 60000)
+                                        }));
+                                      }}
+                                      style={{
+                                        padding: '10px 16px',
+                                        border: selectedSlot?.id === slot.id ? '2px solid #667eea' : '1px solid #e5e7eb',
+                                        borderRadius: '8px',
+                                        background: selectedSlot?.id === slot.id ? '#f0f4ff' : '#fff',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        fontWeight: selectedSlot?.id === slot.id ? '600' : '400',
+                                        color: '#333',
+                                        transition: 'all 0.2s ease'
+                                      }}
+                                    >
+                                      {slot.start_time} - {slot.end_time}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* No slots in selected date */}
+                            {groupedSlots.get(selectedDate)!.morning.length === 0 &&
+                             groupedSlots.get(selectedDate)!.afternoon.length === 0 &&
+                             groupedSlots.get(selectedDate)!.evening.length === 0 && (
+                              <div style={{
+                                textAlign: 'center',
+                                color: '#666',
+                                padding: '20px',
+                                background: '#f8f9fa',
+                                borderRadius: '8px'
+                              }}>
+                                No available slots for this date
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Prompt to select date */}
+                        {!selectedDate && (
+                          <div style={{
+                            padding: '30px',
+                            textAlign: 'center',
+                            color: '#666',
+                            background: '#fff'
+                          }}>
+                            <FaCalendarAlt style={{ fontSize: '32px', color: '#ddd', marginBottom: '12px' }} />
+                            <div>Please select a date above to see available time slots</div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Selected Time Slot Display */}
                 {selectedSlot && (
                   <div style={{
-                    background: '#f0f4ff',
+                    background: 'linear-gradient(135deg, #f0f4ff 0%, #e8f0ff 100%)',
                     padding: '16px',
-                    borderRadius: '8px',
-                    border: '2px solid #667eea'
+                    borderRadius: '12px',
+                    border: '2px solid #667eea',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px'
                   }}>
-                    <h4 style={{ margin: '0 0 8px 0', color: '#333' }}>Selected Time Slot</h4>
-                    <div style={{ color: '#666' }}>
-                      <strong>Date:</strong> {new Date(selectedSlot.date).toLocaleDateString()}<br/>
-                      <strong>Time:</strong> {selectedSlot.start_time} - {selectedSlot.end_time}<br/>
-                      <strong>Duration:</strong> {consultationForm.duration_minutes} minutes
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      fontSize: '20px'
+                    }}>
+                      ✓
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ margin: '0 0 4px 0', color: '#333', fontSize: '16px' }}>Selected Appointment</h4>
+                      <div style={{ color: '#666', fontSize: '14px' }}>
+                        <strong>{formatDateForDisplay(selectedSlot.date)}</strong> ({new Date(selectedSlot.date).toLocaleDateString()})
+                        <span style={{ margin: '0 8px', color: '#ddd' }}>|</span>
+                        <strong>{selectedSlot.start_time} - {selectedSlot.end_time}</strong>
+                        <span style={{ margin: '0 8px', color: '#ddd' }}>|</span>
+                        {consultationForm.duration_minutes} min
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1006,7 +1284,11 @@ export default function ConsultationsPage() {
                 }}>
                   <button
                     type="button"
-                    onClick={() => setShowBookingModal(false)}
+                    onClick={() => {
+                      setShowBookingModal(false);
+                      setSelectedDate(null);
+                      setSelectedSlot(null);
+                    }}
                     style={{
                       background: '#f3f4f6',
                       color: '#6b7280',
