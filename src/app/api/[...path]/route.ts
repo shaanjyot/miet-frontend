@@ -14,13 +14,12 @@ async function proxyRequest(request: NextRequest, path: string[]) {
   const backendUrl = getBackendUrl();
   const envBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  // Log backend URL for debugging (only log first few chars for security)
-  if (process.env.NODE_ENV === 'development' || !envBackendUrl) {
-    console.log('[Proxy] Backend URL:', backendUrl ? `${backendUrl.substring(0, 30)}...` : 'NOT SET');
-    console.log('[Proxy] Env var NEXT_PUBLIC_BACKEND_URL:', envBackendUrl ? 'SET' : 'NOT SET');
-  }
+  // Always log backend URL in production for debugging (first 40 chars)
+  console.log('[Proxy] Backend URL:', backendUrl ? `${backendUrl.substring(0, 40)}...` : 'NOT SET');
+  console.log('[Proxy] Env var NEXT_PUBLIC_BACKEND_URL:', envBackendUrl ? 'SET' : 'NOT SET');
+  console.log('[Proxy] NODE_ENV:', process.env.NODE_ENV || 'not set');
 
-  // Validate backend URL - only error if it's empty or still pointing to localhost in production
+  // Validate backend URL - only error if it's empty
   if (!backendUrl || backendUrl.trim() === '') {
     console.error('[Proxy] Backend URL is empty!');
     return NextResponse.json(
@@ -57,7 +56,18 @@ async function proxyRequest(request: NextRequest, path: string[]) {
     request.headers.forEach((value, key) => {
       const lowerKey = key.toLowerCase();
       // Skip headers that shouldn't be forwarded or are set manually
-      if (!['host', 'connection', 'keep-alive', 'transfer-encoding', 'content-length', 'content-type'].includes(lowerKey)) {
+      // Also skip 'origin' to avoid CORS issues (server-to-server requests don't need origin)
+      if (![
+        'host',
+        'connection',
+        'keep-alive',
+        'transfer-encoding',
+        'content-length',
+        'content-type',
+        'origin',  // Don't forward origin - server-to-server request
+        'referer', // Don't forward referer
+        'user-agent' // Optional: don't forward user-agent
+      ].includes(lowerKey)) {
         headers.set(key, value);
       }
     });
@@ -98,6 +108,10 @@ async function proxyRequest(request: NextRequest, path: string[]) {
     const fetchOptions: RequestInit = {
       method: request.method,
       headers,
+      // Add these for better compatibility with Railway
+      redirect: 'follow',
+      // Don't cache requests
+      cache: 'no-store',
     };
 
     // Only add body if it exists and method supports it
@@ -105,16 +119,29 @@ async function proxyRequest(request: NextRequest, path: string[]) {
       fetchOptions.body = body;
     }
 
-    // Add timeout for production
+    // Add timeout for production (longer timeout for Railway)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-    const response = await fetch(targetUrl, {
-      ...fetchOptions,
-      signal: controller.signal
-    });
+    console.log('[Proxy] Making request to:', targetUrl);
+    console.log('[Proxy] Method:', request.method);
+    console.log('[Proxy] Has body:', body !== null);
 
-    clearTimeout(timeoutId);
+    let response: Response;
+    try {
+      response = await fetch(targetUrl, {
+        ...fetchOptions,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      // Re-throw to be caught by outer catch block
+      throw fetchError;
+    }
+
+    // Log response status
+    console.log('[Proxy] Response status:', response.status, response.statusText);
 
     // Get response data
     const responseContentType = response.headers.get('content-type') || '';
@@ -123,26 +150,36 @@ async function proxyRequest(request: NextRequest, path: string[]) {
     if (responseContentType.includes('application/json')) {
       responseBody = await response.text();
 
-      // Log error responses for debugging (both dev and production)
+      // Log all responses in production for debugging
       if (!response.ok) {
         try {
           const errorData = JSON.parse(responseBody as string);
-          console.error('[Proxy Error]', {
+          console.error('[Proxy Error Response]', {
             status: response.status,
             statusText: response.statusText,
             url: targetUrl,
             method: request.method,
+            backendUrl: backendUrl,
             error: errorData
           });
         } catch (e) {
-          console.error('[Proxy Error]', {
+          console.error('[Proxy Error Response]', {
             status: response.status,
             statusText: response.statusText,
             url: targetUrl,
             method: request.method,
-            body: responseBody
+            backendUrl: backendUrl,
+            body: responseBody,
+            parseError: e
           });
         }
+      } else {
+        // Log successful responses too (first 200 chars)
+        console.log('[Proxy Success]', {
+          status: response.status,
+          url: targetUrl,
+          bodyPreview: (responseBody as string).substring(0, 200)
+        });
       }
     } else {
       responseBody = await response.arrayBuffer();
