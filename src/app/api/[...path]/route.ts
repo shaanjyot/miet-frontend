@@ -1,23 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://miet-backend-production.up.railway.app';
+// Default fallback URL
+const DEFAULT_BACKEND_URL = 'https://miet-backend-production.up.railway.app';
 
 // Remove trailing slash from backend URL
-const getBackendUrl = () => BACKEND_URL.replace(/\/$/, '');
+const getBackendUrl = () => {
+  // Read from env at runtime (works better in serverless functions)
+  const envUrl = process.env.NEXT_PUBLIC_BACKEND_URL || DEFAULT_BACKEND_URL;
+  return envUrl.replace(/\/$/, '');
+};
 
 async function proxyRequest(request: NextRequest, path: string[]) {
   const backendUrl = getBackendUrl();
+  const envBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  // Validate backend URL
-  if (!backendUrl || backendUrl === 'https://miet-backend-production.up.railway.app') {
-    // In production, this should be set
-    if (process.env.NODE_ENV === 'production') {
-      console.error('[Proxy] NEXT_PUBLIC_BACKEND_URL is not set in production!');
-      return NextResponse.json(
-        { error: 'Backend URL not configured' },
-        { status: 500 }
-      );
-    }
+  // Log backend URL for debugging (only log first few chars for security)
+  if (process.env.NODE_ENV === 'development' || !envBackendUrl) {
+    console.log('[Proxy] Backend URL:', backendUrl ? `${backendUrl.substring(0, 30)}...` : 'NOT SET');
+    console.log('[Proxy] Env var NEXT_PUBLIC_BACKEND_URL:', envBackendUrl ? 'SET' : 'NOT SET');
+  }
+
+  // Validate backend URL - only error if it's empty or still pointing to localhost in production
+  if (!backendUrl || backendUrl.trim() === '') {
+    console.error('[Proxy] Backend URL is empty!');
+    return NextResponse.json(
+      { error: 'Backend URL not configured' },
+      { status: 500 }
+    );
+  }
+
+  // Warn if using localhost in production (but don't block)
+  if (backendUrl.includes('localhost') && process.env.NODE_ENV === 'production') {
+    console.warn('[Proxy] WARNING: Using localhost backend URL in production!');
   }
 
   // The path array doesn't include 'api' prefix since the route is under /api/
