@@ -31,7 +31,10 @@ export default function ImageGallery() {
   const fetchGalleryImages = async () => {
     try {
       setLoading(true);
-      const response = await fetch(getApiUrl('api/gallery'));
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+      const response = await fetch(getApiUrl('api/gallery'), { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (!response.ok) throw new Error('Failed to fetch gallery');
       const data = await response.json();
       const activeImages = (data.images || []).filter((img: GalleryImage) => img.status === 'active');
@@ -133,7 +136,91 @@ export default function ImageGallery() {
     );
   }
 
-  if (images.length === 0) return null;
+  if (images.length === 0) {
+    return (
+      <section style={{
+        background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%)',
+        padding: 'clamp(2.5rem, 5vw, 5rem) 0',
+        textAlign: 'center',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        {/* Decorative background elements */}
+        <div style={{
+          position: 'absolute', top: '-10%', left: '-10%', width: '30%', height: '30%',
+          background: 'radial-gradient(circle, rgba(167,139,250,0.15) 0%, transparent 70%)',
+          borderRadius: '50%', animation: 'galleryFloat 10s ease-in-out infinite'
+        }} />
+        <div style={{
+          position: 'absolute', bottom: '-10%', right: '-10%', width: '25%', height: '25%',
+          background: 'radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)',
+          borderRadius: '50%', animation: 'galleryFloat 8s ease-in-out infinite reverse'
+        }} />
+
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <h2 style={{
+            fontFamily: 'Righteous, cursive',
+            fontSize: 'clamp(2rem, 4vw, 3rem)',
+            fontWeight: '700',
+            color: '#ffffff',
+            marginBottom: '0.5rem',
+            textShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            letterSpacing: '2px'
+          }}>
+            Our Gallery
+          </h2>
+          <div style={{
+            width: '60px', height: '4px',
+            background: 'linear-gradient(90deg, #a78bfa, #c084fc)',
+            margin: '0 auto 2rem', borderRadius: '2px'
+          }} />
+
+          {/* Placeholder images grid */}
+          <div style={{
+            maxWidth: '1000px', margin: '0 auto', padding: '0 2rem',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: 'clamp(12px, 2vw, 20px)'
+          }}>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} style={{
+                background: 'rgba(255,255,255,0.06)',
+                borderRadius: '16px',
+                height: 'clamp(140px, 20vw, 200px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px dashed rgba(167,139,250,0.25)',
+                transition: 'all 0.3s ease'
+              }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(167,139,250,0.35)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+              </div>
+            ))}
+          </div>
+
+          <p style={{
+            color: 'rgba(255,255,255,0.5)',
+            fontSize: 'clamp(0.9rem, 1.2vw, 1.05rem)',
+            marginTop: '1.5rem',
+            fontWeight: '400'
+          }}>
+            Gallery images coming soon
+          </p>
+        </div>
+
+        <style dangerouslySetInnerHTML={{ __html: `
+          @keyframes galleryFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+          }
+        `}} />
+      </section>
+    );
+  }
 
   // Determine visible slides for the carousel strip
   const getVisibleIndices = () => {
