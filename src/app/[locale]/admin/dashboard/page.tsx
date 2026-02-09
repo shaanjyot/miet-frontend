@@ -1656,10 +1656,40 @@ export default function AdminDashboard() {
       });
       if (res.ok) {
         const data = await res.json();
-        setCmsContent(data.raw || []);
+        const raw = data.raw || [];
+        setCmsContent(raw);
+        if (raw.length === 0) {
+          const seedRes = await fetch(getApiUrl('api/cms/seed'), {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (seedRes.ok) await fetchCmsContent();
+        }
       }
     } catch (error) {
       console.error('Error fetching CMS content:', error);
+    }
+  }
+
+  async function handleCmsPreload() {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("admin_jwt");
+      const res = await fetch(getApiUrl('api/cms/seed'), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        fetchCmsContent();
+        addNotification({ type: 'success', title: 'CMS preloaded', message: data.message || 'Current site content loaded.' });
+      } else {
+        addNotification({ type: 'error', title: 'Preload failed', message: data.error || 'Could not preload content.' });
+      }
+    } catch (error) {
+      addNotification({ type: 'error', title: 'Preload failed', message: error instanceof Error ? error.message : 'Could not preload content.' });
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -8258,6 +8288,22 @@ export default function AdminDashboard() {
                     <option value="privacy">Privacy</option>
                     <option value="terms">Terms</option>
                   </select>
+                  <button
+                    onClick={handleCmsPreload}
+                    disabled={loading}
+                    style={{
+                      background: 'rgba(16, 185, 129, 0.9)',
+                      color: '#fff', border: 'none', borderRadius: '12px',
+                      padding: '12px 20px', fontWeight: 700, fontSize: '14px',
+                      cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                      boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => !loading && (e.currentTarget.style.transform = 'translateY(-2px)')}
+                    onMouseLeave={(e) => !loading && (e.currentTarget.style.transform = 'translateY(0)')}
+                  >
+                    Preload current site content
+                  </button>
                   <button
                     onClick={() => {
                       setCmsForm({ page_key: 'home', section_key: '', field_key: '', field_value: '', field_type: 'text' });
