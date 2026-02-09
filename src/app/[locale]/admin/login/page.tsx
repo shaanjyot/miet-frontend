@@ -286,7 +286,7 @@ export default function AdminLogin() {
             font-size: 14px !important;
             transition: all 0.3s ease !important;
         }
-        
+
         input:focus, textarea:focus, select:focus {
             border-color: #667eea !important;
             background-color: #1e293b !important;
