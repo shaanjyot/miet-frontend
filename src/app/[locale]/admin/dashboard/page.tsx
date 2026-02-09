@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 import Image from 'next/image';
-import { FaThLarge, FaList, FaTags, FaUserCircle, FaSignOutAlt, FaChevronLeft, FaChevronRight, FaUserMd, FaChevronDown, FaSearch, FaEdit, FaTrash, FaPlus, FaEye } from "react-icons/fa";
+import { FaThLarge, FaList, FaTags, FaUserCircle, FaSignOutAlt, FaChevronLeft, FaChevronRight, FaUserMd, FaChevronDown, FaSearch, FaEdit, FaTrash, FaPlus, FaEye, FaImages, FaCog } from "react-icons/fa";
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 import { getApiUrl } from "@/utils/api";
 import { useNotifications } from "@/components/NotificationSystem";
@@ -208,7 +208,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [ailmentsExpanded, setAilmentsExpanded] = useState(false);
-  const [activeMenu, setActiveMenu] = useState<'dashboard' | 'categories' | 'subcategories' | 'consultants' | 'users' | 'services' | 'products' | 'blogs' | 'webinars' | 'consultations'>('dashboard');
+  const [activeMenu, setActiveMenu] = useState<'dashboard' | 'categories' | 'subcategories' | 'consultants' | 'users' | 'services' | 'products' | 'blogs' | 'webinars' | 'consultations' | 'gallery' | 'cms'>('dashboard');
   const [isClient, setIsClient] = useState(false);
   // Consultant state
   const [consultants, setConsultants] = useState<Consultant[]>([]);
@@ -382,6 +382,46 @@ export default function AdminDashboard() {
   const [showBlogModal, setShowBlogModal] = useState(false);
   const [deleteBlogId, setDeleteBlogId] = useState<number | null>(null);
   const [deleteBlogName, setDeleteBlogName] = useState<string>('');
+
+  // Gallery state
+  interface GalleryImage {
+    id?: number;
+    title: string;
+    description: string;
+    image_path: string;
+    display_order: number;
+    status: 'active' | 'inactive';
+    created_at?: string;
+  }
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  const [galleryTitle, setGalleryTitle] = useState('');
+  const [galleryDescription, setGalleryDescription] = useState('');
+  const [galleryEditId, setGalleryEditId] = useState<number | null>(null);
+  const [galleryEditForm, setGalleryEditForm] = useState<Partial<GalleryImage>>({});
+  const [showGalleryModal, setShowGalleryModal] = useState(false);
+  const [galleryPreview, setGalleryPreview] = useState<string[]>([]);
+
+  // CMS state
+  interface CmsItem {
+    id?: number;
+    page_key: string;
+    section_key: string;
+    field_key: string;
+    field_value: string;
+    field_type: 'text' | 'textarea' | 'html' | 'image' | 'number' | 'json';
+  }
+  const [cmsContent, setCmsContent] = useState<CmsItem[]>([]);
+  const [cmsForm, setCmsForm] = useState<CmsItem>({
+    page_key: 'home',
+    section_key: '',
+    field_key: '',
+    field_value: '',
+    field_type: 'text'
+  });
+  const [cmsEditId, setCmsEditId] = useState<number | null>(null);
+  const [showCmsModal, setShowCmsModal] = useState(false);
+  const [cmsPageFilter, setCmsPageFilter] = useState('all');
 
   // Client-side hydration fix
   useEffect(() => {
@@ -723,6 +763,8 @@ export default function AdminDashboard() {
     { key: 'blogs', label: 'Blogs & Media', icon: <FaList size={20} /> },
     { key: 'webinars', label: 'Webinars', icon: <FaList size={20} /> },
     { key: 'consultations', label: 'Consultations', icon: <FaUserMd size={20} /> },
+    { key: 'gallery', label: 'Gallery', icon: <FaImages size={20} /> },
+    { key: 'cms', label: 'CMS / Pages', icon: <FaCog size={20} /> },
   ];
 
   // Helper to save slots to backend
@@ -1485,6 +1527,187 @@ export default function AdminDashboard() {
       alert('Error deleting blog');
     }
   }
+
+  // Gallery CRUD
+  async function fetchGallery() {
+    try {
+      const token = localStorage.getItem("admin_jwt");
+      const res = await fetch(getApiUrl('api/gallery?status=all'), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGalleryImages(data.images || []);
+      }
+    } catch (error) {
+      console.error('Error fetching gallery:', error);
+    }
+  }
+
+  async function handleGalleryUpload(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (galleryFiles.length === 0) { alert('Please select at least one image'); return; }
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("admin_jwt");
+      const formData = new FormData();
+      galleryFiles.forEach(file => formData.append('images', file));
+      formData.append('title', galleryTitle);
+      formData.append('description', galleryDescription);
+      formData.append('status', 'active');
+
+      const res = await fetch(getApiUrl('api/gallery'), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+      if (res.ok) {
+        setGalleryFiles([]);
+        setGalleryTitle('');
+        setGalleryDescription('');
+        setGalleryPreview([]);
+        setShowGalleryModal(false);
+        fetchGallery();
+        addNotification({ type: 'success', title: 'Success', message: 'Images uploaded successfully!' });
+      } else {
+        alert('Failed to upload images');
+      }
+    } catch (error) {
+      alert('Error uploading images');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGalleryUpdate(id: number) {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("admin_jwt");
+      const formData = new FormData();
+      if (galleryEditForm.title !== undefined) formData.append('title', galleryEditForm.title);
+      if (galleryEditForm.description !== undefined) formData.append('description', galleryEditForm.description);
+      if (galleryEditForm.status) formData.append('status', galleryEditForm.status);
+      if (galleryEditForm.display_order !== undefined) formData.append('display_order', String(galleryEditForm.display_order));
+
+      const res = await fetch(getApiUrl(`api/gallery/${id}`), {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+      if (res.ok) {
+        setGalleryEditId(null);
+        setGalleryEditForm({});
+        fetchGallery();
+        addNotification({ type: 'success', title: 'Success', message: 'Gallery image updated!' });
+      } else {
+        alert('Failed to update gallery image');
+      }
+    } catch (error) {
+      alert('Error updating gallery image');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGalleryDelete(id: number) {
+    if (!confirm('Are you sure you want to delete this gallery image?')) return;
+    try {
+      const token = localStorage.getItem("admin_jwt");
+      const res = await fetch(getApiUrl(`api/gallery/${id}`), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchGallery();
+        addNotification({ type: 'success', title: 'Success', message: 'Gallery image deleted!' });
+      } else {
+        alert('Failed to delete gallery image');
+      }
+    } catch (error) {
+      alert('Error deleting gallery image');
+    }
+  }
+
+  function getGalleryImageUrl(img: GalleryImage) {
+    if (!img.image_path) return '/intro.webp';
+    if (img.image_path.startsWith('http')) return img.image_path;
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+    const cleanUrl = backendUrl.endsWith('/') ? backendUrl.slice(0, -1) : backendUrl;
+    const cleanPath = img.image_path.startsWith('/') ? img.image_path : `/${img.image_path}`;
+    return `${cleanUrl}${cleanPath}`;
+  }
+
+  // CMS CRUD
+  async function fetchCmsContent() {
+    try {
+      const token = localStorage.getItem("admin_jwt");
+      const url = cmsPageFilter === 'all' ? 'api/cms' : `api/cms/${cmsPageFilter}`;
+      const res = await fetch(getApiUrl(url), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCmsContent(data.raw || []);
+      }
+    } catch (error) {
+      console.error('Error fetching CMS content:', error);
+    }
+  }
+
+  async function handleCmsSave(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!cmsForm.page_key || !cmsForm.section_key || !cmsForm.field_key) {
+      alert('Page, Section, and Field Key are required');
+      return;
+    }
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("admin_jwt");
+      const res = await fetch(getApiUrl('api/cms'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(cmsForm)
+      });
+      if (res.ok) {
+        setCmsForm({ page_key: 'home', section_key: '', field_key: '', field_value: '', field_type: 'text' });
+        setCmsEditId(null);
+        setShowCmsModal(false);
+        fetchCmsContent();
+        addNotification({ type: 'success', title: 'Success', message: 'CMS content saved!' });
+      } else {
+        alert('Failed to save CMS content');
+      }
+    } catch (error) {
+      alert('Error saving CMS content');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCmsDelete(id: number) {
+    if (!confirm('Are you sure you want to delete this CMS entry?')) return;
+    try {
+      const token = localStorage.getItem("admin_jwt");
+      const res = await fetch(getApiUrl(`api/cms/${id}`), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchCmsContent();
+        addNotification({ type: 'success', title: 'Success', message: 'CMS content deleted!' });
+      } else {
+        alert('Failed to delete CMS content');
+      }
+    } catch (error) {
+      alert('Error deleting CMS content');
+    }
+  }
+
+  // Fetch gallery and CMS on menu change
+  useEffect(() => {
+    if (activeMenu === 'gallery') fetchGallery();
+    if (activeMenu === 'cms') fetchCmsContent();
+  }, [activeMenu, cmsPageFilter]);
 
   // Webinar form handlers
   async function handleWebinarSubmit(e: React.FormEvent) {
@@ -7709,6 +7932,546 @@ export default function AdminDashboard() {
                         }}
                       >
                         {consultationEditId ? 'Update' : 'Schedule'} Consultation
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Gallery Management */}
+          {activeMenu === 'gallery' && (
+            <section>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 32,
+                flexWrap: 'wrap',
+                gap: 16
+              }}>
+                <h2 style={{
+                  fontSize: 'clamp(24px, 4vw, 32px)',
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }}>Gallery Management</h2>
+                <button
+                  onClick={() => { setShowGalleryModal(true); setGalleryFiles([]); setGalleryTitle(''); setGalleryDescription(''); setGalleryPreview([]); }}
+                  style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    padding: '12px 24px',
+                    fontWeight: 700,
+                    fontSize: '15px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                  <FaPlus /> Upload Images
+                </button>
+              </div>
+
+              {/* Gallery Grid */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+                gap: 20
+              }}>
+                {galleryImages.map((img) => (
+                  <div key={img.id} style={{
+                    background: '#fff',
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                    border: '1px solid rgba(102, 126, 234, 0.1)',
+                    transition: 'all 0.3s ease'
+                  }}>
+                    <div style={{ position: 'relative', height: '180px', overflow: 'hidden' }}>
+                      <img
+                        src={getGalleryImageUrl(img)}
+                        alt={img.title || 'Gallery image'}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => { (e.target as HTMLImageElement).src = '/intro.webp'; }}
+                      />
+                      <div style={{
+                        position: 'absolute', top: 8, right: 8,
+                        background: img.status === 'active' ? '#10b981' : '#ef4444',
+                        color: '#fff', padding: '4px 10px', borderRadius: '8px',
+                        fontSize: '12px', fontWeight: 600, textTransform: 'uppercase'
+                      }}>
+                        {img.status}
+                      </div>
+                    </div>
+                    <div style={{ padding: '16px' }}>
+                      {galleryEditId === img.id ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <input
+                            value={galleryEditForm.title || ''}
+                            onChange={(e) => setGalleryEditForm(f => ({ ...f, title: e.target.value }))}
+                            placeholder="Title"
+                            style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}
+                          />
+                          <input
+                            value={galleryEditForm.description || ''}
+                            onChange={(e) => setGalleryEditForm(f => ({ ...f, description: e.target.value }))}
+                            placeholder="Description"
+                            style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}
+                          />
+                          <input
+                            type="number"
+                            value={galleryEditForm.display_order || 0}
+                            onChange={(e) => setGalleryEditForm(f => ({ ...f, display_order: parseInt(e.target.value) }))}
+                            placeholder="Display Order"
+                            style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}
+                          />
+                          <select
+                            value={galleryEditForm.status || 'active'}
+                            onChange={(e) => setGalleryEditForm(f => ({ ...f, status: e.target.value as 'active' | 'inactive' }))}
+                            style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' }}
+                          >
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                          </select>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              onClick={() => handleGalleryUpdate(img.id!)}
+                              style={{
+                                flex: 1, background: '#10b981', color: '#fff', border: 'none',
+                                borderRadius: '8px', padding: '8px', fontWeight: 600, cursor: 'pointer'
+                              }}
+                            >Save</button>
+                            <button
+                              onClick={() => { setGalleryEditId(null); setGalleryEditForm({}); }}
+                              style={{
+                                flex: 1, background: '#6b7280', color: '#fff', border: 'none',
+                                borderRadius: '8px', padding: '8px', fontWeight: 600, cursor: 'pointer'
+                              }}
+                            >Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <h4 style={{ fontWeight: 700, color: '#1e1b4b', marginBottom: 4, fontSize: '15px' }}>
+                            {img.title || 'Untitled'}
+                          </h4>
+                          <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: 8, lineHeight: 1.4 }}>
+                            {img.description || 'No description'}
+                          </p>
+                          <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: 12 }}>
+                            Order: {img.display_order}
+                          </p>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              onClick={() => {
+                                setGalleryEditId(img.id!);
+                                setGalleryEditForm({ title: img.title, description: img.description, display_order: img.display_order, status: img.status });
+                              }}
+                              style={{
+                                flex: 1, background: 'rgba(102, 126, 234, 0.1)', color: '#667eea',
+                                border: 'none', borderRadius: '8px', padding: '8px', fontWeight: 600,
+                                cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center',
+                                justifyContent: 'center', gap: 4
+                              }}
+                            >
+                              <FaEdit /> Edit
+                            </button>
+                            <button
+                              onClick={() => handleGalleryDelete(img.id!)}
+                              style={{
+                                flex: 1, background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
+                                border: 'none', borderRadius: '8px', padding: '8px', fontWeight: 600,
+                                cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center',
+                                justifyContent: 'center', gap: 4
+                              }}
+                            >
+                              <FaTrash /> Delete
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {galleryImages.length === 0 && (
+                <div style={{
+                  textAlign: 'center', padding: '60px 20px', color: '#6b7280'
+                }}>
+                  <FaImages size={48} style={{ marginBottom: 16, opacity: 0.3 }} />
+                  <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: 8 }}>No gallery images yet</h3>
+                  <p>Upload images to create your homepage gallery slider.</p>
+                </div>
+              )}
+
+              {/* Gallery Upload Modal */}
+              {showGalleryModal && (
+                <div style={{
+                  position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                  background: 'rgba(0,0,0,0.5)', zIndex: 3000,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+                }} onClick={e => { if (e.target === e.currentTarget) setShowGalleryModal(false); }}>
+                  <div style={{
+                    background: '#fff', borderRadius: '20px', padding: '40px',
+                    width: '90vw', maxWidth: '600px', maxHeight: '90vh',
+                    boxShadow: '0 20px 60px rgba(102, 126, 234, 0.2)',
+                    position: 'relative', overflow: 'auto'
+                  }}>
+                    <button
+                      onClick={() => setShowGalleryModal(false)}
+                      style={{
+                        position: 'absolute', top: 16, right: 16,
+                        background: 'rgba(102, 126, 234, 0.1)', border: 'none',
+                        fontSize: 22, color: '#667eea', cursor: 'pointer',
+                        width: '36px', height: '36px', borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >×</button>
+                    <h2 style={{
+                      fontWeight: 700, marginBottom: 24, fontSize: '24px',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text'
+                    }}>Upload Gallery Images</h2>
+                    <form onSubmit={handleGalleryUpload} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Title (optional)</label>
+                        <input
+                          value={galleryTitle}
+                          onChange={e => setGalleryTitle(e.target.value)}
+                          placeholder="Image title"
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Description (optional)</label>
+                        <textarea
+                          value={galleryDescription}
+                          onChange={e => setGalleryDescription(e.target.value)}
+                          placeholder="Image description"
+                          rows={3}
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px', resize: 'vertical' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Select Images *</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            setGalleryFiles(files);
+                            const previews = files.map(f => URL.createObjectURL(f));
+                            setGalleryPreview(previews);
+                          }}
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
+                        />
+                        {galleryPreview.length > 0 && (
+                          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                            {galleryPreview.map((p, i) => (
+                              <img key={i} src={p} alt={`Preview ${i + 1}`}
+                                style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 10, border: '2px solid rgba(102, 126, 234, 0.2)' }}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={loading || galleryFiles.length === 0}
+                        style={{
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: '#fff', border: 'none', borderRadius: '12px',
+                          padding: '14px 28px', fontWeight: 700, fontSize: '16px',
+                          cursor: loading ? 'not-allowed' : 'pointer',
+                          boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                        }}
+                      >
+                        {loading ? 'Uploading...' : `Upload ${galleryFiles.length} Image${galleryFiles.length !== 1 ? 's' : ''}`}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* CMS / Page Content Management */}
+          {activeMenu === 'cms' && (
+            <section>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 32,
+                flexWrap: 'wrap',
+                gap: 16
+              }}>
+                <h2 style={{
+                  fontSize: 'clamp(24px, 4vw, 32px)',
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }}>CMS - Page Content</h2>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <select
+                    value={cmsPageFilter}
+                    onChange={e => setCmsPageFilter(e.target.value)}
+                    style={{
+                      padding: '10px 16px', borderRadius: '10px',
+                      border: '2px solid rgba(102, 126, 234, 0.2)',
+                      fontSize: '14px', fontWeight: 600, color: '#333'
+                    }}
+                  >
+                    <option value="all">All Pages</option>
+                    <option value="home">Home</option>
+                    <option value="about">About</option>
+                    <option value="contact">Contact</option>
+                    <option value="services">Services</option>
+                    <option value="courses">Courses</option>
+                    <option value="consultants">Consultants</option>
+                    <option value="marketplace">Marketplace</option>
+                    <option value="events">Events</option>
+                    <option value="privacy">Privacy</option>
+                    <option value="terms">Terms</option>
+                  </select>
+                  <button
+                    onClick={() => {
+                      setCmsForm({ page_key: 'home', section_key: '', field_key: '', field_value: '', field_type: 'text' });
+                      setCmsEditId(null);
+                      setShowCmsModal(true);
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: '#fff', border: 'none', borderRadius: '12px',
+                      padding: '12px 24px', fontWeight: 700, fontSize: '15px',
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                  >
+                    <FaPlus /> Add Content
+                  </button>
+                </div>
+              </div>
+
+              {/* CMS Content Table */}
+              <div style={{
+                background: '#fff', borderRadius: '16px', overflow: 'hidden',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid rgba(102, 126, 234, 0.1)'
+              }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%)' }}>
+                        <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 700, color: '#1e1b4b', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Page</th>
+                        <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 700, color: '#1e1b4b', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Section</th>
+                        <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 700, color: '#1e1b4b', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Field</th>
+                        <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 700, color: '#1e1b4b', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Value</th>
+                        <th style={{ padding: '14px 16px', textAlign: 'left', fontWeight: 700, color: '#1e1b4b', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Type</th>
+                        <th style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 700, color: '#1e1b4b', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cmsContent.map((item, idx) => (
+                        <tr key={item.id || idx} style={{
+                          borderBottom: '1px solid rgba(102, 126, 234, 0.08)',
+                          transition: 'background 0.2s'
+                        }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.03)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <td style={{ padding: '12px 16px', fontSize: '14px', fontWeight: 600, color: '#667eea' }}>{item.page_key}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#333' }}>{item.section_key}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#333' }}>{item.field_key}</td>
+                          <td style={{ padding: '12px 16px', fontSize: '14px', color: '#555', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.field_value ? (item.field_value.length > 60 ? item.field_value.substring(0, 60) + '...' : item.field_value) : '-'}
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span style={{
+                              background: 'rgba(102, 126, 234, 0.1)', color: '#667eea',
+                              padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600
+                            }}>{item.field_type}</span>
+                          </td>
+                          <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                              <button
+                                onClick={() => {
+                                  setCmsForm({
+                                    page_key: item.page_key,
+                                    section_key: item.section_key,
+                                    field_key: item.field_key,
+                                    field_value: item.field_value,
+                                    field_type: item.field_type
+                                  });
+                                  setCmsEditId(item.id || null);
+                                  setShowCmsModal(true);
+                                }}
+                                style={{
+                                  background: 'rgba(102, 126, 234, 0.1)', color: '#667eea',
+                                  border: 'none', borderRadius: '8px', padding: '6px 12px',
+                                  fontWeight: 600, cursor: 'pointer', fontSize: '13px'
+                                }}
+                              >
+                                <FaEdit />
+                              </button>
+                              <button
+                                onClick={() => handleCmsDelete(item.id!)}
+                                style={{
+                                  background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
+                                  border: 'none', borderRadius: '8px', padding: '6px 12px',
+                                  fontWeight: 600, cursor: 'pointer', fontSize: '13px'
+                                }}
+                              >
+                                <FaTrash />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {cmsContent.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '40px 20px', color: '#6b7280' }}>
+                    <FaCog size={36} style={{ marginBottom: 12, opacity: 0.3 }} />
+                    <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: 8 }}>No CMS content yet</h3>
+                    <p style={{ fontSize: '14px' }}>Add content entries to manage text and media across your site pages.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* CMS Edit/Add Modal */}
+              {showCmsModal && (
+                <div style={{
+                  position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                  background: 'rgba(0,0,0,0.5)', zIndex: 3000,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+                }} onClick={e => { if (e.target === e.currentTarget) setShowCmsModal(false); }}>
+                  <div style={{
+                    background: '#fff', borderRadius: '20px', padding: '40px',
+                    width: '90vw', maxWidth: '600px', maxHeight: '90vh',
+                    boxShadow: '0 20px 60px rgba(102, 126, 234, 0.2)',
+                    position: 'relative', overflow: 'auto'
+                  }}>
+                    <button
+                      onClick={() => setShowCmsModal(false)}
+                      style={{
+                        position: 'absolute', top: 16, right: 16,
+                        background: 'rgba(102, 126, 234, 0.1)', border: 'none',
+                        fontSize: 22, color: '#667eea', cursor: 'pointer',
+                        width: '36px', height: '36px', borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >×</button>
+                    <h2 style={{
+                      fontWeight: 700, marginBottom: 24, fontSize: '24px',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text'
+                    }}>{cmsEditId ? 'Edit' : 'Add'} CMS Content</h2>
+                    <form onSubmit={handleCmsSave} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Page *</label>
+                        <select
+                          value={cmsForm.page_key}
+                          onChange={e => setCmsForm(f => ({ ...f, page_key: e.target.value }))}
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
+                        >
+                          <option value="home">Home</option>
+                          <option value="about">About</option>
+                          <option value="contact">Contact</option>
+                          <option value="services">Services</option>
+                          <option value="courses">Courses</option>
+                          <option value="consultants">Consultants</option>
+                          <option value="marketplace">Marketplace</option>
+                          <option value="events">Events</option>
+                          <option value="privacy">Privacy Policy</option>
+                          <option value="terms">Terms & Conditions</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Section Key *</label>
+                        <input
+                          value={cmsForm.section_key}
+                          onChange={e => setCmsForm(f => ({ ...f, section_key: e.target.value }))}
+                          placeholder="e.g. hero, about, features"
+                          required
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Field Key *</label>
+                        <input
+                          value={cmsForm.field_key}
+                          onChange={e => setCmsForm(f => ({ ...f, field_key: e.target.value }))}
+                          placeholder="e.g. title, subtitle, description"
+                          required
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Field Type</label>
+                        <select
+                          value={cmsForm.field_type}
+                          onChange={e => setCmsForm(f => ({ ...f, field_type: e.target.value as CmsItem['field_type'] }))}
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
+                        >
+                          <option value="text">Text</option>
+                          <option value="textarea">Text Area</option>
+                          <option value="html">HTML</option>
+                          <option value="image">Image URL</option>
+                          <option value="number">Number</option>
+                          <option value="json">JSON</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Value</label>
+                        {cmsForm.field_type === 'textarea' || cmsForm.field_type === 'html' || cmsForm.field_type === 'json' ? (
+                          <textarea
+                            value={cmsForm.field_value}
+                            onChange={e => setCmsForm(f => ({ ...f, field_value: e.target.value }))}
+                            placeholder="Enter content..."
+                            rows={6}
+                            style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px', resize: 'vertical', fontFamily: cmsForm.field_type === 'json' ? 'monospace' : 'inherit' }}
+                          />
+                        ) : (
+                          <input
+                            value={cmsForm.field_value}
+                            onChange={e => setCmsForm(f => ({ ...f, field_value: e.target.value }))}
+                            placeholder="Enter value..."
+                            type={cmsForm.field_type === 'number' ? 'number' : 'text'}
+                            style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
+                          />
+                        )}
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        style={{
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: '#fff', border: 'none', borderRadius: '12px',
+                          padding: '14px 28px', fontWeight: 700, fontSize: '16px',
+                          cursor: loading ? 'not-allowed' : 'pointer',
+                          boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                        }}
+                      >
+                        {loading ? 'Saving...' : (cmsEditId ? 'Update Content' : 'Save Content')}
                       </button>
                     </form>
                   </div>
