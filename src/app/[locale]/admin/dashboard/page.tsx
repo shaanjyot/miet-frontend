@@ -9139,14 +9139,22 @@ export default function AdminDashboard() {
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
           }}>
             <h3 style={{ color: '#dc2626', marginBottom: '16px', fontSize: '20px' }}>
-              Delete {deleteBlogId ? 'Blog' : 'Product'}
+              Delete {deleteBlogId ? 'Blog' : deleteConsultantId ? 'Consultant' : 'Product'}
             </h3>
             <p style={{ marginBottom: '24px', color: '#374151' }}>
-              Are you sure you want to delete <strong>{deleteBlogId ? deleteBlogName : deleteProductName}</strong>? This action cannot be undone.
+              Are you sure you want to delete <strong>{deleteBlogId ? deleteBlogName : deleteConsultantId ? deleteConsultantName : deleteProductName}</strong>? This action cannot be undone.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button
-                onClick={() => setShowDeleteModal(false)}
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteConsultantId(null);
+                  setDeleteConsultantName('');
+                  setDeleteBlogId(null);
+                  setDeleteBlogName('');
+                  setDeleteProductId(null);
+                  setDeleteProductName('');
+                }}
                 style={{
                   background: '#6b7280',
                   color: 'white',
@@ -9162,31 +9170,25 @@ export default function AdminDashboard() {
               <button
                 onClick={async () => {
                   if (deleteBlogId) {
-                    // Handle blog deletion
                     await handleBlogDelete();
+                  } else if (deleteConsultantId) {
+                    await handleConsultantDelete();
                   } else if (deleteProductId) {
-                    // Handle product deletion
                     try {
-                      // Try backend delete first
                       const response = await fetch(getApiUrl(`api/products/${deleteProductId}`), {
                         method: 'DELETE'
                       });
 
                       if (response.ok) {
-                        // Backend delete successful
                         setProducts(products.filter(p => p.id !== deleteProductId));
                         setSuccessMessage('Product deleted successfully!');
                         setShowSuccessPopup(true);
                       } else {
-                        // Backend delete failed, do frontend-only deletion
-
                         setProducts(products.filter(p => p.id !== deleteProductId));
                         setSuccessMessage('Product removed from view (backend delete not implemented)');
                         setShowSuccessPopup(true);
                       }
                     } catch (error) {
-                      // Network error, do frontend-only deletion
-
                       setProducts(products.filter(p => p.id !== deleteProductId));
                       setSuccessMessage('Product removed from view (backend delete not implemented)');
                       setShowSuccessPopup(true);
