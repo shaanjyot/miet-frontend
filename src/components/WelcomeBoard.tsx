@@ -1,10 +1,18 @@
+'use client';
+
 import React from 'react';
 import styles from './WelcomeBoard.module.css';
 import { useTranslations } from 'next-intl';
+import { useCmsContent, getCmsValue, cmsOrT } from '@/hooks/useCmsContent';
 
+const SECTION = 'WelcomeBoard';
 
 export default function WelcomeBoard() {
   const t = useTranslations('WelcomeBoard');
+  const { content: cmsContent } = useCmsContent('home');
+  const text = (key: string) => cmsOrT(cmsContent, SECTION, key, t(key));
+  const cmsWelcome = getCmsValue(cmsContent, SECTION, 'welcome');
+  const cmsDescription = getCmsValue(cmsContent, SECTION, 'description');
   // Use public/brain-miet.svg as the center icon, floating, with animated concentric circles and 4 floating labels
   return (
     <section
@@ -102,7 +110,7 @@ export default function WelcomeBoard() {
               letterSpacing: '0.5px'
             }}
           >
-            {t('title')}
+            {text('title')}
           </div>
           <div
             className="hero-subtitle"
@@ -115,7 +123,7 @@ export default function WelcomeBoard() {
               maxWidth: '600px'
             }}
           >
-            {t('subtitle')}
+            {text('subtitle')}
           </div>
           <div
             className="hero-welcome"
@@ -128,9 +136,11 @@ export default function WelcomeBoard() {
               textShadow: '0 1px 5px rgba(0,0,0,0.1)'
             }}
           >
-            {t.rich('welcome', {
-              b: (chunks) => <b style={{ color: '#5a67d8' }}>{chunks}</b>
-            })} <br />
+            {cmsWelcome != null && cmsWelcome !== '' ? (
+              <span dangerouslySetInnerHTML={{ __html: cmsWelcome }} />
+            ) : (
+              t.rich('welcome', { b: (chunks) => <b style={{ color: '#5a67d8' }}>{chunks}</b> })
+            )} <br />
             <span
               className="hero-description"
               style={{
@@ -140,9 +150,11 @@ export default function WelcomeBoard() {
                 lineHeight: 1.6
               }}
             >
-              {t.rich('description', {
-                br: () => <br />
-              })}
+              {cmsDescription != null && cmsDescription !== '' ? (
+                <span dangerouslySetInnerHTML={{ __html: cmsDescription.replace(/\n/g, '<br />') }} />
+              ) : (
+                t.rich('description', { br: () => <br /> })
+              )}
             </span>
           </div>
 
@@ -171,7 +183,7 @@ export default function WelcomeBoard() {
               e.currentTarget.style.boxShadow = '0 4px 15px rgba(99, 102, 241, 0.3)';
             }}
           >
-            {t('learnMore')}
+            {text('learnMore')}
           </button>
         </div >
         {/* Right: Animated Brain Hero */}

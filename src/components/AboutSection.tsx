@@ -1,14 +1,23 @@
 "use client";
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useCmsContent, getCmsValue, cmsOrT } from '@/hooks/useCmsContent';
+
+const SECTION = 'AboutSection';
 
 export default function AboutSection() {
   const t = useTranslations('AboutSection');
+  const { content: cmsContent } = useCmsContent('about');
+  const text = (cmsKey: string, fallback: string) => cmsOrT(cmsContent, SECTION, cmsKey, fallback);
+  const html = (cmsKey: string, fallback: string) => {
+    const v = getCmsValue(cmsContent, SECTION, cmsKey);
+    return (v != null && v !== '') ? v : fallback;
+  };
   const [activeTab, setActiveTab] = useState(0);
 
   const tabs = [
     {
-      label: t('tabs.overview'),
+      label: text('tabs_overview', t('tabs.overview')),
       content: (
         <div
           style={{
@@ -32,26 +41,26 @@ export default function AboutSection() {
               marginBottom: '1rem',
               lineHeight: '1.3'
             }}>
-              {t('overview.title')}
+              {text('overview_title', t('overview.title'))}
             </h3>
-            <p dangerouslySetInnerHTML={{ __html: t.raw('overview.description1') }} />
+            <p dangerouslySetInnerHTML={{ __html: html('overview_description1', t.raw('overview.description1')) }} />
             <h3 style={{ color: '#5a67d8', fontWeight: 700, marginTop: 32 }}>
-              {t('overview.communityTitle')}
+              {text('overview_communityTitle', t('overview.communityTitle'))}
             </h3>
             <p>
-              {t('overview.communityDescription')}
+              {text('overview_communityDescription', t('overview.communityDescription'))}
             </p>
-            <h3 style={{ color: '#5a67d8', fontWeight: 700, marginTop: 32 }}>{t('overview.aboutTitle')}</h3>
-            <p dangerouslySetInnerHTML={{ __html: t.raw('overview.aboutIntro') }} />
+            <h3 style={{ color: '#5a67d8', fontWeight: 700, marginTop: 32 }}>{text('overview_aboutTitle', t('overview.aboutTitle'))}</h3>
+            <p dangerouslySetInnerHTML={{ __html: html('overview_aboutIntro', t.raw('overview.aboutIntro')) }} />
             <p>
-              {t('overview.aboutDesc1')}
+              {text('overview_aboutDesc1', t('overview.aboutDesc1'))}
             </p>
             <p>
-              {t('overview.aboutDesc2')}
+              {text('overview_aboutDesc2', t('overview.aboutDesc2'))}
             </p>
-            <p>{t('overview.joinUs')}</p>
+            <p>{text('overview_joinUs', t('overview.joinUs'))}</p>
             <div style={{ color: '#5a67d8', fontWeight: 600, marginTop: 18 }}>
-              {t('overview.tags')}
+              {text('overview_tags', t('overview.tags'))}
             </div>
           </div>
           <div style={{ flex: 1, minWidth: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
@@ -73,32 +82,32 @@ export default function AboutSection() {
       ),
     },
     {
-      label: t('tabs.vision'),
+      label: text('tabs_vision', t('tabs.vision')),
       content: (
         <div style={{ maxWidth: 900, margin: '0 auto', color: '#22543d', fontSize: 18, lineHeight: 1.7 }}>
-          <h3 style={{ color: '#5a67d8', fontWeight: 700 }}>{t('vision.title')}</h3>
-          <p>{t('vision.p1')}</p>
-          <p>{t('vision.p2')}</p>
-          <p>{t('vision.p3')}</p>
-          <div style={{ color: '#5a67d8', fontWeight: 600, marginTop: 18 }}>{t('vision.tags')}</div>
+          <h3 style={{ color: '#5a67d8', fontWeight: 700 }}>{text('vision_title', t('vision.title'))}</h3>
+          <p>{text('vision_p1', t('vision.p1'))}</p>
+          <p>{text('vision_p2', t('vision.p2'))}</p>
+          <p>{text('vision_p3', t('vision.p3'))}</p>
+          <div style={{ color: '#5a67d8', fontWeight: 600, marginTop: 18 }}>{text('vision_tags', t('vision.tags'))}</div>
         </div>
       ),
     },
     {
-      label: t('tabs.founder'),
+      label: text('tabs_founder', t('tabs.founder')),
       content: (
         <div style={{ maxWidth: 900, margin: '0 auto', color: '#22543d', fontSize: 18, lineHeight: 1.7, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <h3 style={{ color: '#5a67d8', fontWeight: 700 }}>{t('founder.title')}</h3>
+          <h3 style={{ color: '#5a67d8', fontWeight: 700 }}>{text('founder_title', t('founder.title'))}</h3>
           <img src="/founder.webp" alt="Dr. Jyoti Bajaj" style={{ width: 180, height: 180, borderRadius: '50%', objectFit: 'cover', border: '4px solid #5a67d8', margin: '18px 0', boxShadow: '0 2px 12px #5a67d822' }} />
-          <p dangerouslySetInnerHTML={{ __html: t.raw('founder.p1') }} />
-          <p>{t('founder.p2')}</p>
-          <p>{t('founder.p3')}</p>
-          <a href="mailto:info@miet.life" style={{ color: '#5a67d8', fontWeight: 600, textDecoration: 'underline', marginTop: 12, display: 'inline-block' }}>{t('founder.writeToUs')}</a>
+          <p dangerouslySetInnerHTML={{ __html: html('founder_p1', t.raw('founder.p1')) }} />
+          <p>{text('founder_p2', t('founder.p2'))}</p>
+          <p>{text('founder_p3', t('founder.p3'))}</p>
+          <a href="mailto:info@miet.life" style={{ color: '#5a67d8', fontWeight: 600, textDecoration: 'underline', marginTop: 12, display: 'inline-block' }}>{text('founder_writeToUs', t('founder.writeToUs'))}</a>
         </div>
       ),
     },
     {
-      label: t('tabs.team'),
+      label: text('tabs_team', t('tabs.team')),
       content: (
         <div
           style={{
@@ -118,15 +127,15 @@ export default function AboutSection() {
             <img src="/team.webp" alt="MieT Team" style={{ width: '100%', maxWidth: 480, borderRadius: 16, margin: '18px 0', boxShadow: '0 2px 12px #5a67d822' }} />
           </div>
           <div style={{ flex: 1, minWidth: 280, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <h3 style={{ color: '#5a67d8', fontWeight: 700 }}>{t('team.title')}</h3>
-            <p>{t('team.description')}</p>
-            <a href="https://miet.life/meet-our-team" target="_blank" rel="noopener noreferrer" style={{ color: '#5a67d8', fontWeight: 600, textDecoration: 'underline', marginTop: 12, display: 'inline-block' }}>{t('team.meetTeam')}</a>
+            <h3 style={{ color: '#5a67d8', fontWeight: 700 }}>{text('team_title', t('team.title'))}</h3>
+            <p>{text('team_description', t('team.description'))}</p>
+            <a href="https://miet.life/meet-our-team" target="_blank" rel="noopener noreferrer" style={{ color: '#5a67d8', fontWeight: 600, textDecoration: 'underline', marginTop: 12, display: 'inline-block' }}>{text('team_meetTeam', t('team.meetTeam'))}</a>
           </div>
         </div>
       ),
     },
     {
-      label: t('tabs.programmes'),
+      label: text('tabs_programmes', t('tabs.programmes')),
       content: (
         <div
           style={{
@@ -146,11 +155,11 @@ export default function AboutSection() {
             <img src="/programmes.webp" alt="MieT Programmes" style={{ width: '100%', maxWidth: 480, borderRadius: 16, margin: '18px 0', boxShadow: '0 2px 12px #5a67d822' }} />
           </div>
           <div style={{ flex: 1, minWidth: 280, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <h3 style={{ color: '#5a67d8', fontWeight: 700 }}>{t('programmes.title')}</h3>
-            <h4 style={{ color: '#22543d', fontWeight: 700, marginTop: 18 }}>{t('programmes.p1Title')}</h4>
-            <p dangerouslySetInnerHTML={{ __html: t.raw('programmes.p1Desc') }} />
-            <h4 style={{ color: '#22543d', fontWeight: 700, marginTop: 18 }}>{t('programmes.p2Title')}</h4>
-            <p dangerouslySetInnerHTML={{ __html: t.raw('programmes.p2Desc') }} />
+            <h3 style={{ color: '#5a67d8', fontWeight: 700 }}>{text('programmes_title', t('programmes.title'))}</h3>
+            <h4 style={{ color: '#22543d', fontWeight: 700, marginTop: 18 }}>{text('programmes_p1Title', t('programmes.p1Title'))}</h4>
+            <p dangerouslySetInnerHTML={{ __html: html('programmes_p1Desc', t.raw('programmes.p1Desc')) }} />
+            <h4 style={{ color: '#22543d', fontWeight: 700, marginTop: 18 }}>{text('programmes_p2Title', t('programmes.p2Title'))}</h4>
+            <p dangerouslySetInnerHTML={{ __html: html('programmes_p2Desc', t.raw('programmes.p2Desc')) }} />
           </div>
         </div>
       ),

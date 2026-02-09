@@ -1,10 +1,15 @@
+'use client';
+
 import { useTranslations } from 'next-intl';
 import AboutSection from '@/components/AboutSection';
 import TopBar from '@/components/TopBar';
 import Footer from '@/components/Footer';
+import { useCmsContent, cmsOrT } from '@/hooks/useCmsContent';
 
 export default function AboutPage() {
   const t = useTranslations('AboutPage');
+  const { content: cmsContent } = useCmsContent('about');
+  const text = (key: string) => cmsOrT(cmsContent, 'AboutPage', key, t(key));
 
   return (
     <>
@@ -55,7 +60,7 @@ export default function AboutPage() {
             textShadow: '0 2px 10px rgba(0,0,0,0.1)',
             letterSpacing: '1px'
           }}>
-            {t('title')}
+            {text('title')}
           </h1>
           <p style={{
             fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)',
@@ -65,7 +70,7 @@ export default function AboutPage() {
             lineHeight: '1.6',
             fontWeight: '400'
           }}>
-            {t('subtitle')}
+            {text('subtitle')}
           </p>
         </div>
 

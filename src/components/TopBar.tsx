@@ -10,6 +10,7 @@ import Image from 'next/image';
 import { useCart } from './CartContext';
 import { GoogleAuth } from './GoogleAuth';
 import { useCurrency } from './CurrencyContext';
+import { useCmsContent, cmsOrT } from '@/hooks/useCmsContent';
 
 const Flag = ({ code }: { code: 'en' | 'hi' }) => (
   <Image
@@ -23,6 +24,8 @@ const Flag = ({ code }: { code: 'en' | 'hi' }) => (
 
 export default function TopBar() {
   const t = useTranslations('TopBar');
+  const { content: cmsContent } = useCmsContent('home');
+  const text = (key: string) => cmsOrT(cmsContent, 'TopBar', key, t(key));
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -108,7 +111,7 @@ export default function TopBar() {
             }}
           >
             <FaHome style={{ marginRight: '0.5rem' }} />
-            {t('home')}
+            {text('home')}
           </Link>
           <Link
             href={`/${locale}/sitemap`}
@@ -135,7 +138,7 @@ export default function TopBar() {
               e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
-            {t('sitemap')}
+            {text('sitemap')}
           </Link>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -529,7 +532,7 @@ export default function TopBar() {
               }}
             >
               <FaHome style={{ marginRight: '0.5rem' }} />
-              {t('home')}
+              {text('home')}
             </Link>
 
             <Link href={`/${locale}/about`} style={{
@@ -551,7 +554,7 @@ export default function TopBar() {
                 e.currentTarget.style.boxShadow = 'none';
               }}
             >
-              {t('about')}
+              {text('about')}
             </Link>
 
             <Link href={`/${locale}/services`} style={{
@@ -573,7 +576,7 @@ export default function TopBar() {
                 e.currentTarget.style.boxShadow = 'none';
               }}
             >
-              {t('services')}
+              {text('services')}
             </Link>
 
             <Link href={`/${locale}/consultants`} style={{
@@ -595,7 +598,7 @@ export default function TopBar() {
                 e.currentTarget.style.boxShadow = 'none';
               }}
             >
-              {t('consultants')}
+              {text('consultants')}
             </Link>
 
             <Link href={`/${locale}/marketplace`} style={{
@@ -617,7 +620,7 @@ export default function TopBar() {
                 e.currentTarget.style.boxShadow = 'none';
               }}
             >
-              {t('marketplace')}
+              {text('marketplace')}
             </Link>
 
             <Link href={`/${locale}/courses`} style={{
@@ -639,7 +642,7 @@ export default function TopBar() {
                 e.currentTarget.style.boxShadow = 'none';
               }}
             >
-              {t('courses')}
+              {text('courses')}
             </Link>
 
             <Link href={`/${locale}/contact`} style={{
@@ -661,7 +664,7 @@ export default function TopBar() {
                 e.currentTarget.style.boxShadow = 'none';
               }}
             >
-              {t('contact')}
+              {text('contact')}
             </Link>
           </nav>
         )}
@@ -827,11 +830,11 @@ export default function TopBar() {
                 fontWeight: '600',
                 color: highContrast ? '#fff' : '#1e1b4b',
                 marginBottom: '12px'
-              }}>{t('searchHeading')}</h3>
+              }}>{text('searchHeading')}</h3>
               <div style={{ position: 'relative' }}>
                 <input
                   type="text"
-                  placeholder={t('searchPlaceholder')}
+                  placeholder={text('searchPlaceholder')}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -881,7 +884,7 @@ export default function TopBar() {
                 }}
               >
                 <FaHome style={{ marginRight: '12px', fontSize: '16px' }} />
-                {t('home')}
+                {text('home')}
               </Link>
 
               <Link
@@ -905,7 +908,7 @@ export default function TopBar() {
                   e.currentTarget.style.transform = 'translateX(0)';
                 }}
               >
-                {t('about')}
+                {text('about')}
               </Link>
 
               <Link
@@ -929,7 +932,7 @@ export default function TopBar() {
                   e.currentTarget.style.transform = 'translateX(0)';
                 }}
               >
-                {t('services')}
+                {text('services')}
               </Link>
 
               <Link
@@ -953,7 +956,7 @@ export default function TopBar() {
                   e.currentTarget.style.transform = 'translateX(0)';
                 }}
               >
-                {t('consultants')}
+                {text('consultants')}
               </Link>
 
               <Link
@@ -977,7 +980,7 @@ export default function TopBar() {
                   e.currentTarget.style.transform = 'translateX(0)';
                 }}
               >
-                {t('marketplace')}
+                {text('marketplace')}
               </Link>
 
               <Link
@@ -1001,7 +1004,7 @@ export default function TopBar() {
                   e.currentTarget.style.transform = 'translateX(0)';
                 }}
               >
-                {t('courses')}
+                {text('courses')}
               </Link>
 
               <Link
@@ -1025,7 +1028,7 @@ export default function TopBar() {
                   e.currentTarget.style.transform = 'translateX(0)';
                 }}
               >
-                {t('contact')}
+                {text('contact')}
               </Link>
             </nav>
 
@@ -1056,7 +1059,7 @@ export default function TopBar() {
                 }}
               >
                 <FaShoppingCart style={{ marginRight: '12px', fontSize: '16px' }} />
-                {t('cart')} {itemCount > 0 && `(${itemCount})`}
+                {text('cart')} {itemCount > 0 && `(${itemCount})`}
               </Link>
             </div>
 
@@ -1067,7 +1070,7 @@ export default function TopBar() {
                 fontWeight: '600',
                 color: highContrast ? '#fff' : '#1e1b4b',
                 marginBottom: '12px'
-              }}>{t('accessibility')}</h3>
+              }}>{text('accessibility')}</h3>
 
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 <button
@@ -1139,7 +1142,7 @@ export default function TopBar() {
                 }}
               >
                 <FaAdjust />
-                {t('highContrast')}
+                {text('highContrast')}
               </button>
             </div>
           </div>

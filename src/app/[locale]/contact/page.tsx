@@ -4,9 +4,14 @@ import React, { useState } from 'react';
 import TopBar from '@/components/TopBar';
 import Footer from '@/components/Footer';
 import { useTranslations } from 'next-intl';
+import { useCmsContent, cmsOrT } from '@/hooks/useCmsContent';
+
+const SECTION = 'ContactPage';
 
 export default function ContactPage() {
   const t = useTranslations('ContactPage');
+  const { content: cmsContent } = useCmsContent('contact');
+  const text = (key: string) => cmsOrT(cmsContent, SECTION, key, t(key));
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -75,7 +80,7 @@ export default function ContactPage() {
               textShadow: '0 2px 10px rgba(0,0,0,0.1)',
               letterSpacing: '1px'
             }}>
-              {t('title')}
+              {text('title')}
             </h1>
             <p style={{
               fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)',
@@ -85,7 +90,7 @@ export default function ContactPage() {
               lineHeight: '1.6',
               fontWeight: '400'
             }}>
-              {t('subtitle')}
+              {text('subtitle')}
             </p>
           </div>
 
@@ -116,7 +121,7 @@ export default function ContactPage() {
                   borderRadius: '16px',
                   border: '2px solid rgba(34, 197, 94, 0.2)'
                 }}>
-                  {t('form.success')}
+                  {text('form_success')}
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -125,7 +130,7 @@ export default function ContactPage() {
                     color: '#1e1b4b',
                     fontSize: 'clamp(1rem, 1.1vw, 1.1rem)'
                   }}>
-                    {t('form.name')}
+                    {text('form_name')}
                     <input
                       type="text"
                       name="name"
@@ -158,7 +163,7 @@ export default function ContactPage() {
                     color: '#1e1b4b',
                     fontSize: 'clamp(1rem, 1.1vw, 1.1rem)'
                   }}>
-                    {t('form.email')}
+                    {text('form_email')}
                     <input
                       type="email"
                       name="email"
@@ -191,7 +196,7 @@ export default function ContactPage() {
                     color: '#1e1b4b',
                     fontSize: 'clamp(1rem, 1.1vw, 1.1rem)'
                   }}>
-                    {t('form.phone')}
+                    {text('form_phone')}
                     <input
                       type="tel"
                       name="phone"
@@ -223,7 +228,7 @@ export default function ContactPage() {
                     color: '#1e1b4b',
                     fontSize: 'clamp(1rem, 1.1vw, 1.1rem)'
                   }}>
-                    {t('form.message')}
+                    {text('form_message')}
                     <textarea
                       name="message"
                       value={form.message}
@@ -276,7 +281,7 @@ export default function ContactPage() {
                       e.currentTarget.style.boxShadow = '0 8px 25px rgba(99, 102, 241, 0.3)';
                     }}
                   >
-                    {t('form.send')}
+                    {text('form_send')}
                   </button>
                 </form>
               )}
@@ -350,7 +355,7 @@ export default function ContactPage() {
                 fontFamily: 'Righteous, cursive',
                 textAlign: 'center'
               }}>
-                {t('address.findUs')}
+                {text('address_findUs')}
               </h3>
               <iframe
                 title="MieT Location Map"
