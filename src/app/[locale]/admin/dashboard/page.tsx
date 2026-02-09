@@ -1547,9 +1547,13 @@ export default function AdminDashboard() {
   async function handleGalleryUpload(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (galleryFiles.length === 0) { alert('Please select at least one image'); return; }
+    const token = localStorage.getItem("admin_jwt");
+    if (!token) {
+      alert('Please log in to the admin panel first.');
+      return;
+    }
     try {
       setLoading(true);
-      const token = localStorage.getItem("admin_jwt");
       const formData = new FormData();
       galleryFiles.forEach(file => formData.append('images', file));
       formData.append('title', galleryTitle);
@@ -1561,6 +1565,7 @@ export default function AdminDashboard() {
         headers: { Authorization: `Bearer ${token}` },
         body: formData
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setGalleryFiles([]);
         setGalleryTitle('');
@@ -1570,10 +1575,14 @@ export default function AdminDashboard() {
         fetchGallery();
         addNotification({ type: 'success', title: 'Success', message: 'Images uploaded successfully!' });
       } else {
-        alert('Failed to upload images');
+        const msg = data.error || data.message || `Upload failed (${res.status})`;
+        addNotification({ type: 'error', title: 'Upload failed', message: msg });
+        alert(msg);
       }
     } catch (error) {
-      alert('Error uploading images');
+      const msg = error instanceof Error ? error.message : 'Error uploading images';
+      addNotification({ type: 'error', title: 'Upload error', message: msg });
+      alert(msg);
     } finally {
       setLoading(false);
     }

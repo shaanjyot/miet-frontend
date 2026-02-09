@@ -86,8 +86,8 @@ async function proxyRequest(request: NextRequest, path: string[]) {
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       try {
         if (contentType.includes('multipart/form-data')) {
-          // For file uploads, pass through the FormData
-          body = await request.formData();
+          // Forward raw multipart body so boundary in Content-Type matches body (re-serializing FormData would change boundary and break multer)
+          body = await request.arrayBuffer();
         } else if (contentType.includes('application/json') || contentType === '') {
           // For JSON or when content-type is missing, read as text
           const textBody = await request.text();
