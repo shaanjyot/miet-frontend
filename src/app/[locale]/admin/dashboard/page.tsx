@@ -857,8 +857,11 @@ export default function AdminDashboard() {
   async function handleConsultantEdit(c: Consultant) {
     if (typeof c.id === 'number') {
       setConsultantEditId(c.id);
+      // Username should already be included from fetchConsultants, but ensure it's set
       setConsultantForm({
         ...c,
+        username: c.username || c.email || '', // Use username from consultant data or fallback to email
+        password: '', // Don't pre-fill password for security
         category_ids: Array.isArray(c.category_ids) ? c.category_ids.map(id => String(id)) : [],
         subcategory_ids: Array.isArray(c.subcategory_ids) ? c.subcategory_ids.map(id => String(id)) : [],
       });
@@ -3385,34 +3388,33 @@ export default function AdminDashboard() {
                             fontSize: '16px',
                             transition: 'all 0.2s ease'
                           }}
-                          readOnly={!!consultantEditId}
-                          onFocus={(e) => !consultantEditId && (e.target.style.borderColor = '#667eea')}
-                          onBlur={(e) => !consultantEditId && (e.target.style.borderColor = 'rgba(102, 126, 234, 0.2)')}
+                          onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                          onBlur={(e) => e.target.style.borderColor = 'rgba(102, 126, 234, 0.2)'}
                         />
                       </div>
-                      {!consultantEditId && (
-                        <div style={{ flex: '1', minWidth: '200px' }}>
-                          <label style={{ fontWeight: 600, color: '#374151', marginBottom: '8px', display: 'block' }}>Password</label>
-                          <input
-                            name="password"
-                            type="password"
-                            value={consultantForm.password || ''}
-                            onChange={handleConsultantFormChange}
-                            placeholder="Password"
-                            required
-                            style={{
-                              width: '100%',
-                              padding: '12px 16px',
-                              borderRadius: '8px',
-                              border: '1px solid rgba(102, 126, 234, 0.2)',
-                              fontSize: '16px',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onFocus={(e) => e.target.style.borderColor = '#667eea'}
-                            onBlur={(e) => e.target.style.borderColor = 'rgba(102, 126, 234, 0.2)'}
-                          />
-                        </div>
-                      )}
+                      <div style={{ flex: '1', minWidth: '200px' }}>
+                        <label style={{ fontWeight: 600, color: '#374151', marginBottom: '8px', display: 'block' }}>
+                          Password {consultantEditId ? '(Leave blank to keep current)' : '*'}
+                        </label>
+                        <input
+                          name="password"
+                          type="password"
+                          value={consultantForm.password || ''}
+                          onChange={handleConsultantFormChange}
+                          placeholder={consultantEditId ? "New password (optional)" : "Password"}
+                          required={!consultantEditId}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(102, 126, 234, 0.2)',
+                            fontSize: '16px',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                          onBlur={(e) => e.target.style.borderColor = 'rgba(102, 126, 234, 0.2)'}
+                        />
+                      </div>
                     </div>
 
                     {!consultantEditId && (
@@ -3705,6 +3707,55 @@ export default function AdminDashboard() {
                             {consultantForm.featured ? 'Featured' : 'Not Featured'}
                           </span>
                         </label>
+                      </div>
+                      {/* Promote to Pro */}
+                      <div style={{ flex: '1', minWidth: '200px' }}>
+                        <label style={{ fontWeight: 600, color: '#374151', marginBottom: '8px', display: 'block' }}>⭐ Pro Status</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={(consultantForm as any).is_pro || false}
+                              onChange={async (e) => {
+                                const isPro = e.target.checked;
+                                setConsultantForm(f => ({ ...f, is_pro: isPro } as any));
+                                if ((consultantForm as any).id) {
+                                  try {
+                                    const token = localStorage.getItem('admin_jwt');
+                                    await fetch(getApiUrl(`api/consultants/${(consultantForm as any).id}/promote`), {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                                      body: JSON.stringify({ is_pro: isPro, subscription_plan: isPro ? 'premium' : null })
+                                    });
+                                  } catch (err) {
+                                    console.error('Error promoting consultant:', err);
+                                  }
+                                }
+                              }}
+                              style={{ width: '32px', height: '18px' }}
+                            />
+                            <span style={{ color: (consultantForm as any).is_pro ? '#d97706' : '#6b7280', fontWeight: 600 }}>
+                              {(consultantForm as any).is_pro ? '⭐ Pro Consultant' : 'Standard'}
+                            </span>
+                          </label>
+                          {(consultantForm as any).is_pro && (
+                            <select
+                              value={(consultantForm as any).subscription_plan || 'premium'}
+                              onChange={(e) => setConsultantForm(f => ({ ...f, subscription_plan: e.target.value } as any))}
+                              style={{
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                border: '1px solid rgba(102, 126, 234, 0.2)',
+                                fontSize: '14px',
+                                background: '#fffbeb'
+                              }}
+                            >
+                              <option value="basic">Basic Plan</option>
+                              <option value="standard">Standard Plan</option>
+                              <option value="premium">Premium Plan</option>
+                            </select>
+                          )}
+                        </div>
                       </div>
                     </div>
 

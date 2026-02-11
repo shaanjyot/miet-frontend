@@ -469,10 +469,10 @@ export default function TopBar() {
         padding: 'clamp(8px, 2vw, 10px) clamp(1rem, 3vw, 2vw)',
         background: highContrast ? '#222' : '#fff',
         position: 'relative',
-        flexWrap: 'wrap',
-        gap: 'clamp(0.5rem, 2vw, 1rem)'
+        flexWrap: 'nowrap',
+        gap: 'clamp(0.5rem, 1vw, 1rem)'
       }}>
-        <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: 'clamp(12px, 3vw, 16px)' }}>
+        <div className="logo-section" style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 2vw, 16px)', flexShrink: 0 }}>
           <Link href={`/${locale}`}>
             <Image
               src="/miet-main.webp"
@@ -482,15 +482,15 @@ export default function TopBar() {
               style={{
                 borderRadius: 12,
                 background: '#f7fafc',
-                width: 'clamp(44px, 12vw, 56px)',
-                height: 'clamp(44px, 12vw, 56px)'
+                width: 'clamp(36px, 10vw, 56px)',
+                height: 'clamp(36px, 10vw, 56px)'
               }}
               priority
             />
           </Link>
           <span style={{
             fontFamily: 'Righteous, cursive',
-            fontSize: 'clamp(22px, 5vw, 28px)',
+            fontSize: 'clamp(18px, 4vw, 28px)',
             color: '#5a67d8',
             fontWeight: 700
           }}>MieT</span>
@@ -500,8 +500,8 @@ export default function TopBar() {
           <nav aria-label="Main navigation" style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '2rem',
-            fontSize: 'clamp(1rem, 1.1vw, 1.1rem)',
+            gap: 'clamp(0.5rem, 1.5vw, 2rem)',
+            fontSize: 'clamp(0.85rem, 1vw, 1.1rem)',
             fontWeight: '600',
             flex: 1,
             justifyContent: 'center',
@@ -668,19 +668,14 @@ export default function TopBar() {
             </Link>
           </nav>
         )}
-        {/* Hamburger for mobile */}
-        {isMobile && (
-          <button onClick={() => setMobileMenu(m => !m)} aria-label="Open menu" style={{ background: 'none', border: 'none', fontSize: 32, color: highContrast ? '#fff' : '#5a67d8', cursor: 'pointer', marginLeft: 16 }}>
-            {mobileMenu ? <FaTimes /> : <FaBars />}
-          </button>
-        )}
-        {/* Login/Signup and Cart */}
+        {/* Login/Signup, Cart, and Hamburger - always in a single row */}
         <div className="login-section" style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 'clamp(0.5rem, 2vw, 1.5rem)',
-          marginLeft: 'clamp(1rem, 3vw, 2rem)',
-          flexWrap: 'wrap'
+          gap: 'clamp(6px, 1.5vw, 16px)',
+          marginLeft: 'auto',
+          flexWrap: 'nowrap',
+          flexShrink: 0
         }}>
           {/* Cart Icon */}
           <Link href={`/${locale}/cart`} style={{
@@ -738,6 +733,24 @@ export default function TopBar() {
 
           {/* Google Auth Login */}
           <GoogleAuth />
+
+          {/* Hamburger for mobile */}
+          {isMobile && (
+            <button onClick={() => setMobileMenu(m => !m)} aria-label="Open menu" style={{
+              background: 'none',
+              border: 'none',
+              fontSize: 'clamp(24px, 6vw, 32px)',
+              color: highContrast ? '#fff' : '#5a67d8',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              {mobileMenu ? <FaTimes /> : <FaBars />}
+            </button>
+          )}
         </div>
         {/* Mobile Left Drawer */}
         <div
@@ -1186,38 +1199,53 @@ export default function TopBar() {
 
           @media (max-width: 768px) {
             .topbar-root {
-              min-height: 70px !important;
+              min-height: auto !important;
             }
 
             .topbar-root .main-row {
-              flex-direction: column !important;
-              align-items: stretch !important;
-              gap: 1rem !important;
+              flex-direction: row !important;
+              align-items: center !important;
+              flex-wrap: nowrap !important;
+              gap: 8px !important;
+              padding: 8px 12px !important;
             }
 
             .topbar-root .login-section {
-              justify-content: center !important;
-              gap: 1rem !important;
+              gap: 6px !important;
+              margin-left: auto !important;
+              flex-wrap: nowrap !important;
             }
 
             .topbar-root .logo-section {
-              justify-content: center !important;
+              flex-shrink: 0;
             }
 
             .mobile-drawer {
               width: 280px !important;
             }
+
+            .topbar-root .utility-row {
+              padding: 4px 12px !important;
+              gap: 6px !important;
+            }
           }
 
           @media (max-width: 480px) {
             .topbar-root .utility-row {
-              flex-direction: column !important;
-              gap: 0.5rem !important;
-              padding: 0.5rem 1rem !important;
+              flex-wrap: wrap !important;
+              justify-content: center !important;
+              gap: 4px !important;
+              padding: 4px 8px !important;
             }
 
             .topbar-root .accessibility-controls {
-              justify-content: center !important;
+              padding: 2px 4px !important;
+              gap: 2px !important;
+            }
+
+            .topbar-root .main-row {
+              padding: 6px 8px !important;
+              gap: 6px !important;
             }
 
             .mobile-drawer {

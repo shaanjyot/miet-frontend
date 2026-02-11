@@ -301,7 +301,7 @@ export default function ContactPage() {
                   lineHeight: '1.6',
                   marginBottom: '1rem'
                 }}>
-                  <strong style={{ color: '#1e1b4b' }}>MIET Life</strong>
+                  <strong style={{ color: '#1e1b4b' }}>Miet Life</strong>
                 </div>
                 <div style={{
                   color: '#4b5563',
@@ -310,8 +310,8 @@ export default function ContactPage() {
                   fontWeight: '500'
                 }}>
                   <b style={{ color: '#1e1b4b' }}>Email:</b>{' '}
-                  <a href="mailto:support@miet.life" style={{ color: '#6366f1', textDecoration: 'none' }}>
-                    support@miet.life
+                  <a href="mailto:miet.life@gmail.com" style={{ color: '#6366f1', textDecoration: 'none' }}>
+                    miet.life@gmail.com
                   </a>
                 </div>
                 <div style={{

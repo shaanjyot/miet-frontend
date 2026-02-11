@@ -18,6 +18,11 @@ interface Consultant {
   speciality?: string;
   city?: string;
   status: string;
+  is_pro?: boolean;
+  subscription_plan?: string;
+  subscription_start?: string;
+  subscription_end?: string;
+  promoted_by_admin?: boolean;
 }
 
 interface Appointment {
@@ -68,7 +73,7 @@ export default function ConsultantDashboard() {
   const [webinars, setWebinars] = useState<Webinar[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'appointments' | 'webinars' | 'availability' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'appointments' | 'webinars' | 'availability' | 'profile' | 'subscription'>('overview');
   const [showAddAvailability, setShowAddAvailability] = useState(false);
   const [newAvailability, setNewAvailability] = useState({
     date: '',
@@ -84,7 +89,7 @@ export default function ConsultantDashboard() {
   const checkAuthAndLoadData = async () => {
     const token = localStorage.getItem('consultant_jwt');
     if (!token) {
-      router.push('/admin/login');
+      router.push('/consultants/login');
       return;
     }
 
@@ -337,12 +342,32 @@ export default function ConsultantDashboard() {
                   marginBottom: '8px'
                 }}>
                   Welcome, {consultant.name}!
+                  {consultant.is_pro && (
+                    <span style={{
+                      display: 'inline-block',
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      color: 'white',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      padding: '4px 12px',
+                      borderRadius: '20px',
+                      marginLeft: '12px',
+                      verticalAlign: 'middle'
+                    }}>
+                      ⭐ PRO
+                    </span>
+                  )}
                 </h1>
                 <p style={{
                   fontSize: '16px',
                   color: '#666'
                 }}>
                   Manage your appointments, webinars, and availability
+                  {consultant.is_pro && consultant.subscription_plan && (
+                    <span style={{ color: '#d97706', fontWeight: '600' }}>
+                      {' '}| {consultant.subscription_plan.charAt(0).toUpperCase() + consultant.subscription_plan.slice(1)} Plan
+                    </span>
+                  )}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
@@ -387,6 +412,7 @@ export default function ConsultantDashboard() {
                 { id: 'appointments', label: 'Appointments', icon: FaCalendarAlt },
                 { id: 'webinars', label: 'Webinars', icon: FaVideo },
                 { id: 'availability', label: 'Availability', icon: FaClock },
+                { id: 'subscription', label: consultant?.is_pro ? '⭐ Pro' : 'Subscription', icon: FaCog },
                 { id: 'profile', label: 'Profile', icon: FaUserMd }
               ].map(({ id, label, icon: Icon }) => (
                 <button
@@ -680,9 +706,9 @@ export default function ConsultantDashboard() {
                               fontSize: '12px',
                               fontWeight: '600',
                               background: appointment.status === 'scheduled' ? '#e3f2fd' :
-                                         appointment.status === 'confirmed' ? '#e8f5e8' : '#ffebee',
+                                appointment.status === 'confirmed' ? '#e8f5e8' : '#ffebee',
                               color: appointment.status === 'scheduled' ? '#1976d2' :
-                                     appointment.status === 'confirmed' ? '#388e3c' : '#d32f2f'
+                                appointment.status === 'confirmed' ? '#388e3c' : '#d32f2f'
                             }}>
                               {appointment.status}
                             </span>
@@ -1074,6 +1100,127 @@ export default function ConsultantDashboard() {
                         </button>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'subscription' && (
+              <div>
+                <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#333', marginBottom: '24px' }}>
+                  {consultant.is_pro ? '⭐ Your Pro Subscription' : 'Upgrade to Pro'}
+                </h2>
+
+                {consultant.is_pro ? (
+                  <div>
+                    <div style={{
+                      background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                      borderRadius: '16px',
+                      padding: '32px',
+                      marginBottom: '24px',
+                      border: '2px solid #f59e0b'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+                        <span style={{ fontSize: '48px' }}>⭐</span>
+                        <div>
+                          <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#92400e', margin: '0 0 4px 0' }}>
+                            Pro {consultant.subscription_plan ? consultant.subscription_plan.charAt(0).toUpperCase() + consultant.subscription_plan.slice(1) : ''} Plan
+                          </h3>
+                          <p style={{ color: '#a16207', margin: 0, fontSize: '14px' }}>
+                            {consultant.promoted_by_admin ? 'Promoted by Admin' : 'Active Subscription'}
+                          </p>
+                        </div>
+                      </div>
+                      {consultant.subscription_end && (
+                        <p style={{ color: '#92400e', fontSize: '14px', margin: 0 }}>
+                          Valid until: {new Date(consultant.subscription_end).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        </p>
+                      )}
+                    </div>
+                    <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#333', marginBottom: '16px' }}>Pro Benefits</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
+                      {['Priority listing in search results', 'Featured badge on your profile', 'Advanced analytics dashboard', 'Priority booking slots', 'Dedicated support channel', 'Marketing & promotion'].map((benefit, i) => (
+                        <div key={i} style={{
+                          display: 'flex', alignItems: 'center', gap: '12px', padding: '16px',
+                          background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb'
+                        }}>
+                          <span style={{ color: '#10b981', fontSize: '18px' }}>✓</span>
+                          <span style={{ color: '#374151', fontSize: '14px', fontWeight: '500' }}>{benefit}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p style={{ color: '#6b7280', fontSize: '16px', marginBottom: '32px', lineHeight: '1.6' }}>
+                      Upgrade to a Pro plan to get featured placement, priority bookings, and advanced tools to grow your practice.
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+                      {[
+                        { key: 'basic', name: 'Basic', monthly: 999, yearly: 9999, features: ['Priority listing', 'Pro badge', 'Email support', '2 featured slots/month'] },
+                        { key: 'standard', name: 'Standard', monthly: 1799, yearly: 17999, features: ['All Basic features', 'Analytics dashboard', 'Priority bookings', 'Chat support', '5 featured slots/month'] },
+                        { key: 'premium', name: 'Premium', monthly: 2999, yearly: 29999, features: ['All Standard features', 'Dedicated support', 'Marketing promotion', 'Phone & chat support', 'Unlimited featured slots'] }
+                      ].map(plan => (
+                        <div key={plan.key} style={{
+                          border: plan.key === 'standard' ? '2px solid #667eea' : '1px solid #e5e7eb',
+                          borderRadius: '16px', padding: '32px', textAlign: 'center', position: 'relative',
+                          background: plan.key === 'standard' ? 'linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%)' : 'white'
+                        }}>
+                          {plan.key === 'standard' && (
+                            <div style={{
+                              position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
+                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white',
+                              padding: '4px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: '700'
+                            }}>MOST POPULAR</div>
+                          )}
+                          <h3 style={{ fontSize: '22px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>{plan.name}</h3>
+                          <div style={{ fontSize: '36px', fontWeight: '800', color: '#667eea', marginBottom: '4px' }}>
+                            ₹{plan.monthly}<span style={{ fontSize: '16px', color: '#6b7280', fontWeight: '500' }}>/mo</span>
+                          </div>
+                          <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '24px' }}>
+                            or ₹{plan.yearly}/year (save {Math.round((1 - plan.yearly / (plan.monthly * 12)) * 100)}%)
+                          </p>
+                          <ul style={{ textAlign: 'left', listStyle: 'none', padding: 0, marginBottom: '24px' }}>
+                            {plan.features.map((f, i) => (
+                              <li key={i} style={{ padding: '8px 0', borderBottom: '1px solid #f3f4f6', fontSize: '14px', color: '#374151', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ color: '#10b981' }}>✓</span> {f}
+                              </li>
+                            ))}
+                          </ul>
+                          <button
+                            onClick={async () => {
+                              try {
+                                const token = localStorage.getItem('consultant_jwt');
+                                const response = await fetch(getApiUrl('api/consultants/subscribe'), {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                                  body: JSON.stringify({ plan: plan.key, billing_cycle: 'monthly' })
+                                });
+                                if (response.ok) {
+                                  alert(`Successfully subscribed to ${plan.name} plan!`);
+                                  window.location.reload();
+                                } else {
+                                  const data = await response.json();
+                                  alert(data.error || 'Subscription failed');
+                                }
+                              } catch (err) {
+                                alert('Error subscribing. Please try again.');
+                              }
+                            }}
+                            style={{
+                              width: '100%',
+                              background: plan.key === 'standard' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'white',
+                              color: plan.key === 'standard' ? 'white' : '#667eea',
+                              border: plan.key === 'standard' ? 'none' : '2px solid #667eea',
+                              borderRadius: '12px', padding: '14px 0', fontWeight: '700', fontSize: '16px', cursor: 'pointer',
+                              transition: 'all 0.3s ease'
+                            }}
+                          >
+                            Subscribe
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

@@ -39,7 +39,7 @@ export default function CancellationRefundPage() {
               marginBottom: '2rem',
               lineHeight: '1.6',
             }}>
-              At MIET Life, we strive to provide quality services and products to our users.
+              At Miet Life, we strive to provide quality services and products to our users.
             </p>
 
             <section style={{ marginBottom: '2.5rem' }}>
@@ -157,8 +157,8 @@ export default function CancellationRefundPage() {
               }}>
                 <div>
                   <strong style={{ color: '#1e1b4b' }}>Email:</strong>{' '}
-                  <a href="mailto:support@miet.life" style={{ color: '#6366f1', textDecoration: 'none' }}>
-                    support@miet.life
+                  <a href="mailto:miet.life@gmail.com" style={{ color: '#6366f1', textDecoration: 'none' }}>
+                    miet.life@gmail.com
                   </a>
                 </div>
                 <div>

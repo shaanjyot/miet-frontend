@@ -82,12 +82,11 @@ export default function Footer() {
                 marginTop: '1.5rem'
               }}>
                 {[
-                  { name: 'Facebook', icon: <FaFacebookF />, href: '#' },
-                  { name: 'Instagram', icon: <FaInstagram />, href: '#' },
-                  { name: 'LinkedIn', icon: <FaLinkedinIn />, href: '#' },
-                  { name: 'YouTube', icon: <FaYoutube />, href: '#' },
-                  { name: 'Twitter', icon: <FaTwitter />, href: '#' },
-                  { name: 'Google Review', icon: <FaGoogle />, href: '#' }
+                  { name: 'Facebook', icon: <FaFacebookF />, href: 'https://www.facebook.com/profile.php?id=61561380770548' },
+                  { name: 'Instagram', icon: <FaInstagram />, href: 'https://www.instagram.com/miet.life/' },
+                  { name: 'LinkedIn', icon: <FaLinkedinIn />, href: 'https://linkedin.com/in/miet-life-17a665313' },
+                  { name: 'YouTube', icon: <FaYoutube />, href: 'https://youtube.com/@mietlife?si=Sin3Bpae5iP7MCYv' },
+                  { name: 'Twitter', icon: <FaTwitter />, href: '#' }
                 ].map((social) => (
                   <a
                     key={social.name}
@@ -207,7 +206,7 @@ export default function Footer() {
                   fontWeight: '500',
                   lineHeight: '1.6'
                 }}>
-                  📞 +91 99999 89408
+                  📞 +91 9319027664
                 </div>
                 <div style={{
                   fontSize: 'clamp(1rem, 1.1vw, 1.05rem)',
@@ -215,7 +214,7 @@ export default function Footer() {
                   fontWeight: '500',
                   lineHeight: '1.6'
                 }}>
-                  ✉️ info@miet.in
+                  ✉️ miet.life@gmail.com
                 </div>
 
                 {/* Newsletter Signup */}
@@ -349,7 +348,7 @@ export default function Footer() {
               fontWeight: '500',
               lineHeight: '1.6'
             }}>
-              © 2025 MieT (Mind Inclusion Education Technology). All rights reserved. Powered by <a href="https://www.sabsoftzone.com" target="_blank" rel="noopener noreferrer" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: '600', transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.textShadow = '0 0 8px rgba(255,255,255,0.5)'} onMouseLeave={(e) => e.currentTarget.style.textShadow = 'none'}> SABsoftzone Pvt. Ltd. </a>
+              © 2025 Miet (Mind Inclusion Education Technology). All rights reserved. Powered by <a href="https://www.sabsoftzone.com" target="_blank" rel="noopener noreferrer" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: '600', transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.textShadow = '0 0 8px rgba(255,255,255,0.5)'} onMouseLeave={(e) => e.currentTarget.style.textShadow = 'none'}> SABsoftzone Pvt. Ltd. </a>
             </p>
             {/* Move to Top Button */}
             <div style={{

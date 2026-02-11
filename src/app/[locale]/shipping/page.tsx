@@ -39,7 +39,7 @@ export default function ShippingPage() {
               marginBottom: '2rem',
               lineHeight: '1.6',
             }}>
-              MIET Life provides digital services only. No physical shipping is involved.
+              Miet Life provides digital services only. No physical shipping is involved.
             </p>
             <p style={{
               fontSize: '1rem',
@@ -114,8 +114,8 @@ export default function ShippingPage() {
               }}>
                 <div>
                   <strong style={{ color: '#1e1b4b' }}>Email:</strong>{' '}
-                  <a href="mailto:support@miet.life" style={{ color: '#6366f1', textDecoration: 'none' }}>
-                    support@miet.life
+                  <a href="mailto:miet.life@gmail.com" style={{ color: '#6366f1', textDecoration: 'none' }}>
+                    miet.life@gmail.com
                   </a>
                 </div>
               </div>

@@ -1,68 +1,75 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { useCmsContent, cmsOrT } from '@/hooks/useCmsContent';
+
+const SECTION = 'ServicesPage';
 
 export default function ServicesPage() {
   const t = useTranslations('ServicesPage');
+  const { content: cmsContent } = useCmsContent('services');
+  const text = (cmsKey: string, fallback: string) => cmsOrT(cmsContent, SECTION, cmsKey, fallback);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'basic' | 'standard' | 'premium'>('basic');
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
 
+  // CMS content auto-refreshes via the useCmsContent hook
+
   const serviceCards = [
     {
       key: 'appointments',
-      title: t('cards.appointments.title'),
-      description: t('cards.appointments.desc'),
+      title: text('cards_appointments_title', t('cards.appointments.title')),
+      description: text('cards_appointments_desc', t('cards.appointments.desc')),
       features: [
-        t('cards.appointments.f1'),
-        t('cards.appointments.f2'),
-        t('cards.appointments.f3'),
-        t('cards.appointments.f4'),
+        text('cards_appointments_f1', t('cards.appointments.f1')),
+        text('cards_appointments_f2', t('cards.appointments.f2')),
+        text('cards_appointments_f3', t('cards.appointments.f3')),
+        text('cards_appointments_f4', t('cards.appointments.f4')),
       ],
-      cta: t('cards.appointments.cta'),
+      cta: text('cards_appointments_cta', t('cards.appointments.cta')),
       ctaLink: '/services/consultations',
       color: '#5a67d8',
     },
     {
       key: 'subscriptions',
-      title: t('cards.subscriptions.title'),
-      description: t('cards.subscriptions.desc'),
+      title: text('cards_subscriptions_title', t('cards.subscriptions.title')),
+      description: text('cards_subscriptions_desc', t('cards.subscriptions.desc')),
       features: [
-        t('cards.subscriptions.f1'),
-        t('cards.subscriptions.f2'),
-        t('cards.subscriptions.f3'),
-        t('cards.subscriptions.f4'),
+        text('cards_subscriptions_f1', t('cards.subscriptions.f1')),
+        text('cards_subscriptions_f2', t('cards.subscriptions.f2')),
+        text('cards_subscriptions_f3', t('cards.subscriptions.f3')),
+        text('cards_subscriptions_f4', t('cards.subscriptions.f4')),
       ],
-      cta: t('cards.subscriptions.cta'),
+      cta: text('cards_subscriptions_cta', t('cards.subscriptions.cta')),
       ctaLink: '/contact',
       color: '#22543d',
     },
     {
       key: 'events',
-      title: t('cards.events.title'),
-      description: t('cards.events.desc'),
+      title: text('cards_events_title', t('cards.events.title')),
+      description: text('cards_events_desc', t('cards.events.desc')),
       features: [
-        t('cards.events.f1'),
-        t('cards.events.f2'),
-        t('cards.events.f3'),
+        text('cards_events_f1', t('cards.events.f1')),
+        text('cards_events_f2', t('cards.events.f2')),
+        text('cards_events_f3', t('cards.events.f3')),
       ],
-      cta: t('cards.events.cta'),
+      cta: text('cards_events_cta', t('cards.events.cta')),
       ctaLink: '/contact',
       color: '#e53e3e',
     },
     {
       key: 'tests',
-      title: t('cards.tests.title'),
-      description: t('cards.tests.desc'),
+      title: text('cards_tests_title', t('cards.tests.title')),
+      description: text('cards_tests_desc', t('cards.tests.desc')),
       features: [
-        t('cards.tests.f1'),
-        t('cards.tests.f2'),
-        t('cards.tests.f3'),
+        text('cards_tests_f1', t('cards.tests.f1')),
+        text('cards_tests_f2', t('cards.tests.f2')),
+        text('cards_tests_f3', t('cards.tests.f3')),
       ],
-      cta: t('cards.tests.cta'),
+      cta: text('cards_tests_cta', t('cards.tests.cta')),
       ctaLink: '/contact',
       color: '#38a169',
     },
@@ -145,7 +152,7 @@ export default function ServicesPage() {
               textShadow: '0 2px 10px rgba(0,0,0,0.1)',
               letterSpacing: '1px'
             }}>
-              {t('title')}
+              {text('title', t('title'))}
             </h1>
             <p style={{
               fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)',
@@ -155,7 +162,7 @@ export default function ServicesPage() {
               lineHeight: '1.6',
               fontWeight: '400'
             }}>
-              {t('subtitle')}
+              {text('subtitle', t('subtitle'))}
             </p>
           </div>
           <div style={{
@@ -351,7 +358,7 @@ export default function ServicesPage() {
             border: '1px solid rgba(255,255,255,0.2)',
             boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
           }}>
-            {t('question')} <a
+            {text('question', t('question'))} <a
               href="/contact"
               style={{
                 color: '#667eea',
@@ -367,7 +374,7 @@ export default function ServicesPage() {
                 e.currentTarget.style.color = '#667eea';
                 e.currentTarget.style.textShadow = 'none';
               }}
-            >{t('contactLink')}</a> {t('contactText')}
+            >{text('contactLink', t('contactLink'))}</a> {text('contactText', t('contactText'))}
           </div>
         </section>
 
