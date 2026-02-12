@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useCmsContent, getCmsValue, cmsOrT } from '@/hooks/useCmsContent';
-import { getApiUrl } from '@/utils/api';
+import { getApiUrl, getBackendUrl } from '@/utils/api';
 
 const SECTION = 'AboutSection';
 
@@ -19,30 +19,40 @@ export default function AboutSection() {
   const [programmeData, setProgrammeData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Helper for resolving image URLs
+  // Helper for resolving image URLs - using literal host as requested
+  const getImageUrl = (path: string | undefined, fallback: string) => {
+    if (!path) return fallback;
+    if (path.startsWith('http')) return path;
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `http://localhost:4000${cleanPath}`;
+  };
+
+
   React.useEffect(() => {
     async function fetchData() {
       try {
         const [teamRes, programmeRes] = await Promise.all([
-          fetch(getApiUrl('api/team')),
-          fetch(getApiUrl('api/programmes'))
+          fetch('http://localhost:4000/api/team'),
+          fetch('http://localhost:4000/api/programmes')
         ]);
         if (teamRes.ok) {
           const data = await teamRes.json();
-          setTeamData(data.team || data);
+          setTeamData(data.team || data || []);
         }
         if (programmeRes.ok) {
           const data = await programmeRes.json();
-          setProgrammeData(data.programmes || data);
+          setProgrammeData(data.programmes || data || []);
         }
       } catch (err) {
-        console.error('Error fetching about data:', err);
+        console.error('Error fetching data:', err);
       } finally {
         setIsLoading(false);
       }
     }
     fetchData();
-    
-    // Set up polling to refresh data every 30 seconds for real-time CMS updates
+
+    // Polling interval of 30 seconds for real-time updates as requested
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -151,7 +161,7 @@ export default function AboutSection() {
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent'
-          }}>Meet Our Team</h2>
+          }}>{text('team_mainTitle', 'Meet Our Team')}</h2>
 
           <div style={{
             display: 'grid',
@@ -160,7 +170,11 @@ export default function AboutSection() {
             padding: '20px 0'
           }}>
             {isLoading ? (
-              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: '#5a67d8', fontWeight: 600 }}>Loading team data...</div>
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '100px 40px', color: '#667eea', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+                <div style={{ width: '40px', height: '40px', border: '3px solid rgba(102, 126, 234, 0.3)', borderTopColor: '#667eea', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>Bringing your community experts...</span>
+              </div>
             ) : teamData.length > 0 ? teamData.map((member: any, index: number) => (
               <div
                 key={index}
@@ -188,7 +202,7 @@ export default function AboutSection() {
               >
                 <div style={{ flexShrink: 0 }}>
                   <img
-                    src={member.image_url ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000') + member.image_url : (member.image || "/team.webp")}
+                    src={getImageUrl(member.image_url || member.image, '/team.webp')}
                     alt={member.title}
                     style={{
                       width: 120,
@@ -230,32 +244,12 @@ export default function AboutSection() {
                   }} title={member.description}>
                     {member.description}
                   </p>
-
                 </div>
               </div>
             )) : (
-              <div
-                style={{
-                  maxWidth: 'min(1200px, 96vw)',
-                  margin: '0 auto',
-                  color: '#22543d',
-                  fontSize: 18,
-                  lineHeight: 1.7,
-                  display: 'flex',
-                  flexDirection: 'row',
-                  gap: 40,
-                  flexWrap: 'wrap',
-                  alignItems: 'flex-start',
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 280, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <img src="/team.webp" alt="MieT Team" style={{ width: '100%', maxWidth: 480, borderRadius: 16, margin: '18px 0', boxShadow: '0 2px 12px #5a67d822' }} />
-                </div>
-                <div style={{ flex: 1, minWidth: 280, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <h3 style={{ color: '#5a67d8', fontWeight: 700 }}>{text('team_title', t('team.title'))}</h3>
-                  <p>{text('team_description', t('team.description'))}</p>
-                  <a href="https://miet.life/meet-our-team" target="_blank" rel="noopener noreferrer" style={{ color: '#5a67d8', fontWeight: 600, textDecoration: 'underline', marginTop: 12, display: 'inline-block' }}>{text('team_meetTeam', t('team.meetTeam'))}</a>
-                </div>
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px', background: 'rgba(102, 126, 234, 0.05)', borderRadius: '24px', color: '#667eea' }}>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '10px' }}>No Team Members Yet</h3>
+                <p>We are currently gathering our amazing team. Please check back later!</p>
               </div>
             )}
           </div>
@@ -266,7 +260,12 @@ export default function AboutSection() {
       label: text('tabs_programmes', t('tabs.programmes')),
       content: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 60 }}>
-          {programmeData.length > 0 ? programmeData.map((prog: any, index: number) => (
+          {isLoading ? (
+            <div style={{ textAlign: 'center', padding: '100px 40px', color: '#667eea', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+              <div style={{ width: '40px', height: '40px', border: '3px solid rgba(102, 126, 234, 0.3)', borderTopColor: '#667eea', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+              <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>Loading our specialized programmes...</span>
+            </div>
+          ) : programmeData.length > 0 ? programmeData.map((prog: any, index: number) => (
             <div
               key={index}
               style={{
@@ -276,34 +275,31 @@ export default function AboutSection() {
                 fontSize: 18,
                 lineHeight: 1.7,
                 display: 'flex',
-                flexDirection: index % 2 === 0 ? 'row' : 'row-reverse',
+                flexDirection: (index % 2 === 0) ? 'row' : 'row-reverse',
                 gap: 40,
                 flexWrap: 'wrap',
-                alignItems: 'flex-start',
+                alignItems: 'center',
                 padding: '20px 0'
               }}
             >
               <div style={{ flex: 1, minWidth: 280, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <img
-                  src={
-                    prog.image_url ? (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000') + prog.image_url :
-                      (prog.image || "/programmes.webp")
-                  }
+                  src={getImageUrl(prog.image_url || prog.image, '/programmes.webp')}
                   alt={prog.title}
-                  style={{ width: '100%', maxWidth: 480, borderRadius: 16, boxShadow: '0 2px 12px #5a67d822' }}
+                  style={{ width: '100%', maxWidth: 480, borderRadius: 24, boxShadow: '0 10px 30px rgba(90, 103, 216, 0.15)', border: '1px solid rgba(90, 103, 216, 0.1)' }}
                 />
               </div>
-              <div style={{ flex: 1, minWidth: 280, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <h3 style={{ color: '#5a67d8', fontWeight: 700, fontSize: '1.8rem', marginBottom: '1.5rem' }}>{prog.title}</h3>
-                {prog.description && <p style={{ marginBottom: 20 }}>{prog.description}</p>}
-                {prog.p1_title && <h4 style={{ color: '#22543d', fontWeight: 700, marginTop: 18 }}>{prog.p1_title}</h4>}
-                {prog.p1_description && <p dangerouslySetInnerHTML={{ __html: prog.p1_description }} />}
-                {prog.p2_title && <h4 style={{ color: '#22543d', fontWeight: 700, marginTop: 18 }}>{prog.p2_title}</h4>}
-                {prog.p2_description && <p dangerouslySetInnerHTML={{ __html: prog.p2_description }} />}
+              <div style={{ flex: 1, minWidth: 320, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <h3 style={{ color: '#5a67d8', fontWeight: 800, fontSize: '2.2rem', marginBottom: '1.5rem', lineHeight: 1.2 }}>{prog.title}</h3>
+                {prog.description && <p style={{ marginBottom: 25, fontSize: '1.1rem', color: '#4a5568' }}>{prog.description}</p>}
+
               </div>
             </div>
           )) : (
-            <div style={{ textAlign: 'center', padding: '40px' }}>Loading programmes...</div>
+            <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(102, 126, 234, 0.05)', borderRadius: '24px', color: '#667eea' }}>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '10px' }}>No Programmes Available</h3>
+              <p>We are designing new ways to support you. Please check back later!</p>
+            </div>
           )}
         </div>
       ),

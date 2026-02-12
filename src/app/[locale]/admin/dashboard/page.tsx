@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 import Image from 'next/image';
 import { FaThLarge, FaList, FaTags, FaUserCircle, FaSignOutAlt, FaChevronLeft, FaChevronRight, FaUserMd, FaChevronDown, FaSearch, FaEdit, FaTrash, FaPlus, FaEye, FaImages, FaCog } from "react-icons/fa";
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
-import { getApiUrl } from "@/utils/api";
+import { getApiUrl, getBackendUrl } from "@/utils/api";
 import { useNotifications } from "@/components/NotificationSystem";
 
 interface Category {
@@ -195,6 +195,24 @@ interface Consultation {
   updated_at?: string;
 }
 
+interface TeamMember {
+  id?: number;
+  title: string; // Name
+  role: string;
+  description: string;
+  image?: string;
+  image_url?: string;
+}
+
+interface Programme {
+  id?: number;
+  title: string;
+  description: string;
+  image?: string;
+  image_url?: string;
+}
+
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { addNotification } = useNotifications();
@@ -208,8 +226,18 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [ailmentsExpanded, setAilmentsExpanded] = useState(false);
-  const [activeMenu, setActiveMenu] = useState<'dashboard' | 'categories' | 'subcategories' | 'consultants' | 'users' | 'services' | 'products' | 'blogs' | 'webinars' | 'consultations' | 'gallery' | 'cms'>('dashboard');
+  const [activeMenu, setActiveMenu] = useState<'dashboard' | 'categories' | 'subcategories' | 'consultants' | 'users' | 'services' | 'products' | 'blogs' | 'webinars' | 'consultations' | 'gallery' | 'cms' | 'team' | 'programmes'>('dashboard');
   const [isClient, setIsClient] = useState(false);
+
+  // Helper for resolving image URLs
+  const getImageUrl = (path: string | undefined, fallback: string) => {
+    if (!path) return fallback;
+    if (path.startsWith('http')) return path;
+    const backendUrl = getBackendUrl();
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${backendUrl}${cleanPath}`;
+  };
+
   // Consultant state
   const [consultants, setConsultants] = useState<Consultant[]>([]);
   const [consultantForm, setConsultantForm] = useState<ConsultantForm>({
@@ -422,6 +450,23 @@ export default function AdminDashboard() {
   const [cmsEditId, setCmsEditId] = useState<number | null>(null);
   const [showCmsModal, setShowCmsModal] = useState(false);
   const [cmsPageFilter, setCmsPageFilter] = useState('all');
+
+  // Team State
+  const [teamData, setTeamData] = useState<TeamMember[]>([]);
+  const [teamForm, setTeamForm] = useState<TeamMember>({ title: '', role: '', description: '', image: '' });
+  const [teamEditId, setTeamEditId] = useState<number | null>(null);
+  const [deleteTeamId, setDeleteTeamId] = useState<number | null>(null);
+
+  // Programmes State
+  const [programmeData, setProgrammeData] = useState<Programme[]>([]);
+  const [programmeForm, setProgrammeForm] = useState<Programme>({
+    title: '', description: '', image: '',
+    p1_title: '', p1_description: '', p2_title: '', p2_description: ''
+  });
+  const [programmeEditId, setProgrammeEditId] = useState<number | null>(null);
+  const [deleteProgrammeId, setDeleteProgrammeId] = useState<number | null>(null);
+  const [showTeamModal, setShowTeamModal] = useState(false);
+  const [showProgrammeModal, setShowProgrammeModal] = useState(false);
 
   // Client-side hydration fix
   useEffect(() => {
@@ -758,6 +803,8 @@ export default function AdminDashboard() {
     },
     { key: 'consultants', label: 'Consultants', icon: <FaUserMd size={20} /> },
     { key: 'users', label: 'Users', icon: <FaUserCircle size={20} /> },
+    { key: 'team', label: 'Team', icon: <FaUserCircle size={20} /> },
+    { key: 'programmes', label: 'Programmes', icon: <FaList size={20} /> },
     { key: 'services', label: 'Services', icon: <FaTags size={20} /> },
     { key: 'products', label: 'Products', icon: <FaList size={20} /> },
     { key: 'blogs', label: 'Blogs & Media', icon: <FaList size={20} /> },
@@ -926,8 +973,8 @@ export default function AdminDashboard() {
     setConsultantFormLoaded(false);
   };
 
-  // File upload placeholder
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>, field: 'image' | 'id_proof_url') {
+  // Generic file upload handler
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>, setter: (url: string) => void) {
     const file = e.target.files?.[0];
     if (!file) return;
     const formData = new FormData();
@@ -939,8 +986,7 @@ export default function AdminDashboard() {
       });
       if (!res.ok) throw new Error('Upload failed');
       const data = await res.json();
-      // Use the URL as-is
-      setConsultantForm(f => ({ ...f, [field]: data.url }));
+      setter(data.url);
     } catch {
       alert('Image upload failed.');
     }
@@ -1409,6 +1455,7 @@ export default function AdminDashboard() {
   };
 
   const paginateData = (data: any[], currentPage: number, itemsPerPage: number) => {
+    if (!Array.isArray(data)) return [];
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return data.slice(startIndex, endIndex);
@@ -1749,7 +1796,113 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeMenu === 'gallery') fetchGallery();
     if (activeMenu === 'cms') fetchCmsContent();
+    if (activeMenu === 'team') fetchTeam();
+    if (activeMenu === 'programmes') fetchProgrammes();
   }, [activeMenu, cmsPageFilter]);
+
+  // Team & Programmes Handling
+  // Fetch Dashboard Data (Static consolidated fetcher as requested)
+  async function fetchDashboardData() {
+    try {
+      const res = await fetch('http://localhost:4000/api/team');
+      if (res.ok) {
+        const data = await res.json();
+        setTeamData(data.team || data || []);
+      }
+    } catch (e) {
+      console.error('Error fetching team:', e);
+      setTeamData([]);
+    }
+  }
+
+  async function fetchTeam() {
+    await fetchDashboardData();
+  }
+
+  async function handleTeamSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("admin_jwt");
+      const method = teamEditId ? "PUT" : "POST";
+      const url = teamEditId ? `http://localhost:4000/api/team/${teamEditId}` : 'http://localhost:4000/api/team';
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(teamForm),
+      });
+      if (res.ok) {
+        setTeamForm({ title: '', role: '', description: '', image: '' });
+        setTeamEditId(null);
+        setShowTeamModal(false);
+        await fetchDashboardData(); // Refresh list immediately
+        addNotification({ type: 'success', title: 'Success', message: 'Team member saved successfully!' });
+      } else {
+        const errorText = await res.text();
+        alert(`Failed to save team member: ${errorText}`);
+      }
+    } catch (e) {
+      alert('Error saving team member');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleTeamDelete(id: number) {
+    if (!confirm('Delete this team member?')) return;
+    const token = localStorage.getItem("admin_jwt");
+    await fetch(`http://localhost:4000/api/team/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    await fetchDashboardData();
+  }
+
+  async function fetchProgrammes() {
+    try {
+      const res = await fetch('http://localhost:4000/api/programmes');
+      if (res.ok) {
+        const data = await res.json();
+        setProgrammeData(data.programmes || data || []);
+      }
+    } catch (e) {
+      console.error(e);
+      setProgrammeData([]);
+    }
+  }
+
+  async function handleProgrammeSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("admin_jwt");
+      const method = programmeEditId ? "PUT" : "POST";
+      const url = programmeEditId ? `http://localhost:4000/api/programmes/${programmeEditId}` : 'http://localhost:4000/api/programmes';
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(programmeForm),
+      });
+      if (res.ok) {
+        setProgrammeForm({ title: '', description: '', image: '' });
+        setProgrammeEditId(null);
+        setShowProgrammeModal(false);
+        await fetchProgrammes(); // Refresh the list immediately
+        addNotification({ type: 'success', title: 'Success', message: 'Programme saved successfully!' });
+      } else {
+        const errorText = await res.text();
+        alert(`Failed to save programme: ${errorText}`);
+      }
+    } catch (e) {
+      alert('Error saving programme');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleProgrammeDelete(id: number) {
+    if (!confirm('Delete this programme?')) return;
+    const token = localStorage.getItem("admin_jwt");
+    await fetch(`http://localhost:4000/api/programmes/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    await fetchProgrammes();
+  }
 
   // Webinar form handlers
   async function handleWebinarSubmit(e: React.FormEvent) {
@@ -4147,7 +4300,7 @@ export default function AdminDashboard() {
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={e => handleFileUpload(e, 'image')}
+                        onChange={e => handleFileUpload(e, (url) => setConsultantForm(f => ({ ...f, image: url })))}
                         style={{
                           marginBottom: '12px',
                           padding: '8px',
@@ -4173,7 +4326,7 @@ export default function AdminDashboard() {
                       <input
                         type="file"
                         accept="image/*,.pdf"
-                        onChange={e => handleFileUpload(e, 'id_proof_url')}
+                        onChange={e => handleFileUpload(e, (url) => setConsultantForm(f => ({ ...f, id_proof_url: url })))}
                         style={{
                           marginBottom: '8px',
                           padding: '8px',
@@ -8463,21 +8616,55 @@ export default function AdminDashboard() {
                 )}
               </div>
 
-              {/* CMS Edit/Add Modal */}
-              {showCmsModal && (
+            </section>
+          )}
+
+          {/* Team Section */}
+          {activeMenu === 'team' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {/* Team Header with Add Button */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '16px 24px', borderRadius: '16px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#1a202c', margin: 0 }}>Team Management</h2>
+                <button
+                  onClick={() => {
+                    setTeamForm({ title: '', role: '', description: '', image: '' });
+                    setTeamEditId(null);
+                    setShowTeamModal(true);
+                  }}
+                  style={{
+                    padding: '12px 24px',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                  }}
+                >
+                  <FaUserCircle size={20} /> Add Team Member
+                </button>
+              </div>
+
+              {/* Team Form Modal */}
+              {showTeamModal && (
                 <div style={{
                   position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
                   background: 'rgba(0,0,0,0.5)', zIndex: 3000,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
-                }} onClick={e => { if (e.target === e.currentTarget) setShowCmsModal(false); }}>
+                }} onClick={e => { if (e.target === e.currentTarget) setShowTeamModal(false); }}>
                   <div style={{
                     background: '#fff', borderRadius: '20px', padding: '40px',
-                    width: '90vw', maxWidth: '600px', maxHeight: '90vh',
+                    width: '90vw', maxWidth: '800px', maxHeight: '90vh',
                     boxShadow: '0 20px 60px rgba(102, 126, 234, 0.2)',
                     position: 'relative', overflow: 'auto'
                   }}>
                     <button
-                      onClick={() => setShowCmsModal(false)}
+                      onClick={() => setShowTeamModal(false)}
                       style={{
                         position: 'absolute', top: 16, right: 16,
                         background: 'rgba(102, 126, 234, 0.1)', border: 'none',
@@ -8486,104 +8673,474 @@ export default function AdminDashboard() {
                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                       }}
                     >×</button>
-                    <h2 style={{
-                      fontWeight: 700, marginBottom: 24, fontSize: '24px',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text'
-                    }}>{cmsEditId ? 'Edit' : 'Add'} CMS Content</h2>
-                    <form onSubmit={handleCmsSave} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Page *</label>
-                        <select
-                          value={cmsForm.page_key}
-                          onChange={e => setCmsForm(f => ({ ...f, page_key: e.target.value }))}
-                          style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
-                        >
-                          <option value="home">Home</option>
-                          <option value="about">About</option>
-                          <option value="contact">Contact</option>
-                          <option value="services">Services</option>
-                          <option value="courses">Courses</option>
-                          <option value="consultants">Consultants</option>
-                          <option value="marketplace">Marketplace</option>
-                          <option value="events">Events</option>
-                          <option value="privacy">Privacy Policy</option>
-                          <option value="terms">Terms & Conditions</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Section Key *</label>
+                    <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '24px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                      {teamEditId ? 'Edit Team Member' : 'Add Team Member'}
+                    </h2>
+                    <form onSubmit={handleTeamSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#374151' }}>Name (Title)</label>
                         <input
-                          value={cmsForm.section_key}
-                          onChange={e => setCmsForm(f => ({ ...f, section_key: e.target.value }))}
-                          placeholder="e.g. hero, about, features"
+                          type="text"
+                          className="form-input"
+                          value={teamForm.title}
+                          onChange={e => setTeamForm({ ...teamForm, title: e.target.value })}
+                          placeholder="e.g. Dr. Jane Doe"
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(102, 126, 234, 0.2)',
+                            fontSize: '16px'
+                          }}
                           required
-                          style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
                         />
                       </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Field Key *</label>
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#374151' }}>Role (Designation)</label>
                         <input
-                          value={cmsForm.field_key}
-                          onChange={e => setCmsForm(f => ({ ...f, field_key: e.target.value }))}
-                          placeholder="e.g. title, subtitle, description"
+                          type="text"
+                          className="form-input"
+                          value={teamForm.role}
+                          onChange={e => setTeamForm({ ...teamForm, role: e.target.value })}
+                          placeholder="e.g. Senior Psychologist"
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(102, 126, 234, 0.2)',
+                            fontSize: '16px'
+                          }}
                           required
-                          style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
                         />
                       </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Field Type</label>
-                        <select
-                          value={cmsForm.field_type}
-                          onChange={e => setCmsForm(f => ({ ...f, field_type: e.target.value as CmsItem['field_type'] }))}
-                          style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
-                        >
-                          <option value="text">Text</option>
-                          <option value="textarea">Text Area</option>
-                          <option value="html">HTML</option>
-                          <option value="image">Image URL</option>
-                          <option value="number">Number</option>
-                          <option value="json">JSON</option>
-                        </select>
+                      <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                        <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#374151' }}>Bio (Description)</label>
+                        <textarea
+                          className="form-textarea"
+                          value={teamForm.description}
+                          onChange={e => setTeamForm({ ...teamForm, description: e.target.value })}
+                          rows={4}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(102, 126, 234, 0.2)',
+                            fontSize: '16px'
+                          }}
+                        />
                       </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Value</label>
-                        {cmsForm.field_type === 'textarea' || cmsForm.field_type === 'html' || cmsForm.field_type === 'json' ? (
-                          <textarea
-                            value={cmsForm.field_value}
-                            onChange={e => setCmsForm(f => ({ ...f, field_value: e.target.value }))}
-                            placeholder="Enter content..."
-                            rows={6}
-                            style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px', resize: 'vertical', fontFamily: cmsForm.field_type === 'json' ? 'monospace' : 'inherit' }}
-                          />
-                        ) : (
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#374151' }}>Image</label>
+                        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                           <input
-                            value={cmsForm.field_value}
-                            onChange={e => setCmsForm(f => ({ ...f, field_value: e.target.value }))}
-                            placeholder="Enter value..."
-                            type={cmsForm.field_type === 'number' ? 'number' : 'text'}
-                            style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
+                            type="file"
+                            onChange={(e) => handleFileUpload(e, (url) => setTeamForm({ ...teamForm, image: url }))}
+                            style={{
+                              padding: '8px',
+                              borderRadius: '8px',
+                              border: '1px dashed #667eea',
+                              width: '100%'
+                            }}
                           />
-                        )}
+                          {teamForm.image && <img src={getImageUrl(teamForm.image, '')} alt="Preview" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', border: '2px solid #667eea' }} />}
+                        </div>
                       </div>
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        style={{
+                      <div style={{ gridColumn: '1/-1', display: 'flex', gap: '16px', marginTop: '20px' }}>
+                        <button type="submit" disabled={loading} style={{
+                          padding: '14px 32px',
                           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                          color: '#fff', border: 'none', borderRadius: '12px',
-                          padding: '14px 28px', fontWeight: 700, fontSize: '16px',
-                          cursor: loading ? 'not-allowed' : 'pointer',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                          fontSize: '16px',
                           boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
-                        }}
-                      >
-                        {loading ? 'Saving...' : (cmsEditId ? 'Update Content' : 'Save Content')}
-                      </button>
+                        }}>
+                          {loading ? 'Saving...' : (teamEditId ? 'Update Member' : 'Add Member')}
+                        </button>
+                        <button type="button" onClick={() => setShowTeamModal(false)} style={{
+                          padding: '14px 32px',
+                          background: 'rgba(102, 126, 234, 0.1)',
+                          color: '#667eea',
+                          border: 'none',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                          fontSize: '16px'
+                        }}>
+                          Cancel
+                        </button>
+                      </div>
                     </form>
                   </div>
                 </div>
               )}
-            </section>
+
+              {/* Team Members List (Manual Map as requested) */}
+              <div style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <tr>
+                      <th style={{ padding: '16px', fontWeight: 700 }}>Image</th>
+                      <th style={{ padding: '16px', fontWeight: 700 }}>Name</th>
+                      <th style={{ padding: '16px', fontWeight: 700 }}>Role</th>
+                      <th style={{ padding: '16px', fontWeight: 700 }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teamData.length > 0 ? teamData.map((member) => (
+                      <tr key={member.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '16px' }}>
+                          <img
+                            src={member.image_url ? `http://localhost:4000${member.image_url.startsWith('/') ? member.image_url : `/${member.image_url}`}` : '/team.webp'}
+                            style={{ width: 45, height: 45, borderRadius: '50%', objectFit: 'cover' }}
+                            alt=""
+                          />
+                        </td>
+                        <td style={{ padding: '16px', fontWeight: 600 }}>{member.title}</td>
+                        <td style={{ padding: '16px' }}>{member.role}</td>
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ display: 'flex', gap: '10px' }}>
+                            <button
+                              onClick={() => {
+                                setTeamForm(member);
+                                setTeamEditId(member.id!);
+                                setShowTeamModal(true);
+                              }}
+                              style={{ padding: '6px 12px', background: 'rgba(102, 126, 234, 0.1)', color: '#667eea', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                            >Edit</button>
+                            <button
+                              onClick={() => handleTeamDelete(member.id!)}
+                              style={{ padding: '6px 12px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                            >Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={4} style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
+                          No team members found. Click 'Add Team Member' to create one.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Programmes Section */}
+          {activeMenu === 'programmes' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {/* Programmes Header with Add Button */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '16px 24px', borderRadius: '16px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#1a202c', margin: 0 }}>Programmes Management</h2>
+                <button
+                  onClick={() => {
+                    setProgrammeForm({ title: '', description: '', image: '' });
+                    setProgrammeEditId(null);
+                    setShowProgrammeModal(true);
+                  }}
+                  style={{
+                    padding: '12px 24px',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                  }}
+                >
+                  <FaList size={20} /> Add Programme
+                </button>
+              </div>
+
+              {/* Programme Form Modal */}
+              {showProgrammeModal && (
+                <div style={{
+                  position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                  background: 'rgba(0,0,0,0.5)', zIndex: 3000,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+                }} onClick={e => { if (e.target === e.currentTarget) setShowProgrammeModal(false); }}>
+                  <div style={{
+                    background: '#fff', borderRadius: '20px', padding: '40px',
+                    width: '90vw', maxWidth: '800px', maxHeight: '90vh',
+                    boxShadow: '0 20px 60px rgba(102, 126, 234, 0.2)',
+                    position: 'relative', overflow: 'auto'
+                  }}>
+                    <button
+                      onClick={() => setShowProgrammeModal(false)}
+                      style={{
+                        position: 'absolute', top: 16, right: 16,
+                        background: 'rgba(102, 126, 234, 0.1)', border: 'none',
+                        fontSize: 22, color: '#667eea', cursor: 'pointer',
+                        width: '36px', height: '36px', borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >×</button>
+                    <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '24px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                      {programmeEditId ? 'Edit Programme' : 'Add Programme'}
+                    </h2>
+                    <form onSubmit={handleProgrammeSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#374151' }}>Title</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={programmeForm.title}
+                          onChange={e => setProgrammeForm({ ...programmeForm, title: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(102, 126, 234, 0.2)',
+                            fontSize: '16px'
+                          }}
+                          required
+                        />
+                      </div>
+                      <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                        <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#374151' }}>Description</label>
+                        <textarea
+                          className="form-textarea"
+                          value={programmeForm.description}
+                          onChange={e => setProgrammeForm({ ...programmeForm, description: e.target.value })}
+                          rows={4}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(102, 126, 234, 0.2)',
+                            fontSize: '16px'
+                          }}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#374151' }}>Image</label>
+                        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                          <input
+                            type="file"
+                            onChange={(e) => handleFileUpload(e, (url) => setProgrammeForm({ ...programmeForm, image: url }))}
+                            style={{
+                              padding: '8px',
+                              borderRadius: '8px',
+                              border: '1px dashed #667eea',
+                              width: '100%'
+                            }}
+                          />
+                          {programmeForm.image && <img src={getImageUrl(programmeForm.image, '')} alt="Preview" style={{ width: 60, height: 40, objectFit: 'cover', borderRadius: '8px', border: '2px solid #667eea' }} />}
+                        </div>
+                      </div>
+                      <div style={{ gridColumn: '1/-1', display: 'flex', gap: '16px', marginTop: '25px' }}>
+                        <button type="submit" disabled={loading} style={{
+                          padding: '14px 32px',
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                          fontSize: '16px',
+                          boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                        }}>
+                          {loading ? 'Saving...' : (programmeEditId ? 'Update Programme' : 'Add Programme')}
+                        </button>
+                        <button type="button" onClick={() => setShowProgrammeModal(false)} style={{
+                          padding: '14px 32px',
+                          background: 'rgba(102, 126, 234, 0.1)',
+                          color: '#667eea',
+                          border: 'none',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                          fontSize: '16px'
+                        }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Programmes List (Manual Map as requested) */}
+              <div style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <tr>
+                      <th style={{ padding: '16px', fontWeight: 700 }}>Image</th>
+                      <th style={{ padding: '16px', fontWeight: 700 }}>Title</th>
+                      <th style={{ padding: '16px', fontWeight: 700 }}>Description</th>
+                      <th style={{ padding: '16px', fontWeight: 700 }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {programmeData.length > 0 ? programmeData.map((prog) => (
+                      <tr key={prog.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '16px' }}>
+                          <img
+                            src={prog.image_url ? `http://localhost:4000${prog.image_url.startsWith('/') ? prog.image_url : `/${prog.image_url}`}` : '/programmes.webp'}
+                            style={{ width: 80, height: 50, objectFit: 'cover', borderRadius: '8px' }}
+                            alt=""
+                          />
+                        </td>
+                        <td style={{ padding: '16px', fontWeight: 600 }}>{prog.title}</td>
+                        <td style={{ padding: '16px' }}>{prog.description?.substring(0, 50)}...</td>
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ display: 'flex', gap: '10px' }}>
+                            <button
+                              onClick={() => {
+                                setProgrammeForm(prog);
+                                setProgrammeEditId(prog.id!);
+                                setShowProgrammeModal(true);
+                              }}
+                              style={{ padding: '6px 12px', background: 'rgba(102, 126, 234, 0.1)', color: '#667eea', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                            >Edit</button>
+                            <button
+                              onClick={() => handleProgrammeDelete(prog.id!)}
+                              style={{ padding: '6px 12px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                            >Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={4} style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
+                          No programmes found. Click 'Add Programme' to create one.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* CMS Edit/Add Modal */}
+          {showCmsModal && (
+            <div style={{
+              position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+              background: 'rgba(0,0,0,0.5)', zIndex: 3000,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+            }} onClick={e => { if (e.target === e.currentTarget) setShowCmsModal(false); }}>
+              <div style={{
+                background: '#fff', borderRadius: '20px', padding: '40px',
+                width: '90vw', maxWidth: '600px', maxHeight: '90vh',
+                boxShadow: '0 20px 60px rgba(102, 126, 234, 0.2)',
+                position: 'relative', overflow: 'auto'
+              }}>
+                <button
+                  onClick={() => setShowCmsModal(false)}
+                  style={{
+                    position: 'absolute', top: 16, right: 16,
+                    background: 'rgba(102, 126, 234, 0.1)', border: 'none',
+                    fontSize: 22, color: '#667eea', cursor: 'pointer',
+                    width: '36px', height: '36px', borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}
+                >×</button>
+                <h2 style={{
+                  fontWeight: 700, marginBottom: 24, fontSize: '24px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text'
+                }}>{cmsEditId ? 'Edit' : 'Add'} CMS Content</h2>
+                <form onSubmit={handleCmsSave} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Page *</label>
+                    <select
+                      value={cmsForm.page_key}
+                      onChange={e => setCmsForm(f => ({ ...f, page_key: e.target.value }))}
+                      style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
+                    >
+                      <option value="home">Home</option>
+                      <option value="about">About</option>
+                      <option value="contact">Contact</option>
+                      <option value="services">Services</option>
+                      <option value="courses">Courses</option>
+                      <option value="consultants">Consultants</option>
+                      <option value="marketplace">Marketplace</option>
+                      <option value="events">Events</option>
+                      <option value="privacy">Privacy Policy</option>
+                      <option value="terms">Terms & Conditions</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Section Key *</label>
+                    <input
+                      value={cmsForm.section_key}
+                      onChange={e => setCmsForm(f => ({ ...f, section_key: e.target.value }))}
+                      placeholder="e.g. hero, about, features"
+                      required
+                      style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Field Key *</label>
+                    <input
+                      value={cmsForm.field_key}
+                      onChange={e => setCmsForm(f => ({ ...f, field_key: e.target.value }))}
+                      placeholder="e.g. title, subtitle, description"
+                      required
+                      style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Field Type</label>
+                    <select
+                      value={cmsForm.field_type}
+                      onChange={e => setCmsForm(f => ({ ...f, field_type: e.target.value as CmsItem['field_type'] }))}
+                      style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
+                    >
+                      <option value="text">Text</option>
+                      <option value="textarea">Text Area</option>
+                      <option value="html">HTML</option>
+                      <option value="image">Image URL</option>
+                      <option value="number">Number</option>
+                      <option value="json">JSON</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}>Value</label>
+                    {cmsForm.field_type === 'textarea' || cmsForm.field_type === 'html' || cmsForm.field_type === 'json' ? (
+                      <textarea
+                        value={cmsForm.field_value}
+                        onChange={e => setCmsForm(f => ({ ...f, field_value: e.target.value }))}
+                        placeholder="Enter content..."
+                        rows={6}
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px', resize: 'vertical', fontFamily: cmsForm.field_type === 'json' ? 'monospace' : 'inherit' }}
+                      />
+                    ) : (
+                      <input
+                        value={cmsForm.field_value}
+                        onChange={e => setCmsForm(f => ({ ...f, field_value: e.target.value }))}
+                        placeholder="Enter value..."
+                        type={cmsForm.field_type === 'number' ? 'number' : 'text'}
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid rgba(102, 126, 234, 0.2)', fontSize: '15px' }}
+                      />
+                    )}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: '#fff', border: 'none', borderRadius: '12px',
+                      padding: '14px 28px', fontWeight: 700, fontSize: '16px',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                    }}
+                  >
+                    {loading ? 'Saving...' : (cmsEditId ? 'Update Content' : 'Save Content')}
+                  </button>
+                </form>
+              </div>
+            </div>
           )}
         </main>
       </div>
@@ -8734,289 +9291,78 @@ export default function AdminDashboard() {
             </form>
           </div>
         </div>
-      )}
+      )
+      }
 
       {/* Subcategory Modal */}
-      {showSubcategoryModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          background: 'rgba(0,0,0,0.5)',
-          zIndex: 3000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px'
-        }} onClick={e => { if (e.target === e.currentTarget) setShowSubcategoryModal(false); }}>
+      {
+        showSubcategoryModal && (
           <div style={{
-            background: '#fff',
-            borderRadius: '20px',
-            padding: '40px',
-            minWidth: '90vw',
-            maxWidth: '600px',
-            maxHeight: '90vh',
-            boxShadow: '0 20px 60px rgba(102, 126, 234, 0.2)',
-            position: 'relative',
-            overflow: 'auto'
-          }}>
-            <button
-              onClick={() => setShowSubcategoryModal(false)}
-              aria-label="Close subcategory modal"
-              style={{
-                position: 'absolute',
-                top: 20,
-                right: 20,
-                background: 'rgba(102, 126, 234, 0.1)',
-                border: 'none',
-                fontSize: 24,
-                color: '#667eea',
-                cursor: 'pointer',
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.2)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.1)'}
-            >
-              ×
-            </button>
-            <h2 style={{
-              color: '#667eea',
-              fontWeight: 700,
-              marginBottom: 32,
-              fontSize: 'clamp(24px, 4vw, 32px)',
-              textAlign: 'center',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text'
-            }}>{subEditId ? 'Edit' : 'Add'} Subcategory</h2>
-
-            <form onSubmit={handleSubSubmit} style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 24
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 3000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }} onClick={e => { if (e.target === e.currentTarget) setShowSubcategoryModal(false); }}>
+            <div style={{
+              background: '#fff',
+              borderRadius: '20px',
+              padding: '40px',
+              minWidth: '90vw',
+              maxWidth: '600px',
+              maxHeight: '90vh',
+              boxShadow: '0 20px 60px rgba(102, 126, 234, 0.2)',
+              position: 'relative',
+              overflow: 'auto'
             }}>
-              <div>
-                <label style={{
-                  fontWeight: 600,
+              <button
+                onClick={() => setShowSubcategoryModal(false)}
+                aria-label="Close subcategory modal"
+                style={{
+                  position: 'absolute',
+                  top: 20,
+                  right: 20,
+                  background: 'rgba(102, 126, 234, 0.1)',
+                  border: 'none',
+                  fontSize: 24,
                   color: '#667eea',
-                  fontSize: '16px',
-                  marginBottom: '8px',
-                  display: 'block'
-                }}>Subcategory Name</label>
-                <input
-                  type="text"
-                  value={subName}
-                  onChange={e => setSubName(e.target.value)}
-                  placeholder="Enter subcategory name"
-                  required
-                  style={{
-                    padding: '16px 20px',
-                    borderRadius: '12px',
-                    border: '2px solid rgba(102, 126, 234, 0.2)',
-                    fontSize: '16px',
-                    width: '100%',
-                    transition: 'all 0.2s ease',
-                    outline: 'none'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = '#667eea'}
-                  onBlur={(e) => e.target.style.borderColor = 'rgba(102, 126, 234, 0.2)'}
-                />
-              </div>
+                  cursor: 'pointer',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.2)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.1)'}
+              >
+                ×
+              </button>
+              <h2 style={{
+                color: '#667eea',
+                fontWeight: 700,
+                marginBottom: 32,
+                fontSize: 'clamp(24px, 4vw, 32px)',
+                textAlign: 'center',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>{subEditId ? 'Edit' : 'Add'} Subcategory</h2>
 
-              <div>
-                <label style={{
-                  fontWeight: 600,
-                  color: '#667eea',
-                  fontSize: '16px',
-                  marginBottom: '8px',
-                  display: 'block'
-                }}>Category</label>
-                <select
-                  value={subCatId}
-                  onChange={e => setSubCatId(Number(e.target.value))}
-                  required
-                  style={{
-                    padding: '16px 20px',
-                    borderRadius: '12px',
-                    border: '2px solid rgba(102, 126, 234, 0.2)',
-                    fontSize: '16px',
-                    width: '100%',
-                    transition: 'all 0.2s ease',
-                    outline: 'none',
-                    background: '#fff'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = '#667eea'}
-                  onBlur={(e) => e.target.style.borderColor = 'rgba(102, 126, 234, 0.2)'}
-                >
-                  <option value="">Select Category</option>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{
+              <form onSubmit={handleSubSubmit} style={{
                 display: 'flex',
-                gap: 16,
-                justifyContent: 'center',
-                marginTop: 16
+                flexDirection: 'column',
+                gap: 24
               }}>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  style={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '12px',
-                    padding: '16px 32px',
-                    fontWeight: 700,
-                    fontSize: '16px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-                    minWidth: '120px'
-                  }}
-                  onMouseEnter={(e) => !loading && (e.currentTarget.style.transform = 'translateY(-2px)')}
-                  onMouseLeave={(e) => !loading && (e.currentTarget.style.transform = 'translateY(0)')}
-                >
-                  {loading ? 'Saving...' : (subEditId ? 'Update' : 'Add')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowSubcategoryModal(false)}
-                  style={{
-                    background: 'rgba(102, 126, 234, 0.1)',
-                    color: '#667eea',
-                    border: '2px solid rgba(102, 126, 234, 0.3)',
-                    borderRadius: '12px',
-                    padding: '16px 32px',
-                    fontWeight: 700,
-                    fontSize: '16px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    minWidth: '120px'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.2)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.1)'}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* User Modal */}
-      {showUserModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          background: 'rgba(0,0,0,0.5)',
-          zIndex: 3000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px'
-        }} onClick={e => { if (e.target === e.currentTarget) setShowUserModal(false); }}>
-          <div style={{
-            background: '#fff',
-            borderRadius: '20px',
-            padding: '40px',
-            minWidth: '90vw',
-            maxWidth: '600px',
-            maxHeight: '90vh',
-            boxShadow: '0 20px 60px rgba(102, 126, 234, 0.2)',
-            position: 'relative',
-            overflow: 'auto'
-          }}>
-            <button
-              onClick={() => setShowUserModal(false)}
-              aria-label="Close user modal"
-              style={{
-                position: 'absolute',
-                top: 20,
-                right: 20,
-                background: 'rgba(102, 126, 234, 0.1)',
-                border: 'none',
-                fontSize: 24,
-                color: '#667eea',
-                cursor: 'pointer',
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.2)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.1)'}
-            >
-              ×
-            </button>
-            <h2 style={{
-              color: '#667eea',
-              fontWeight: 700,
-              marginBottom: 32,
-              fontSize: 'clamp(24px, 4vw, 32px)',
-              textAlign: 'center',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text'
-            }}>{userEditId ? 'Edit' : 'Add'} User</h2>
-
-            <form onSubmit={handleUserSubmit} style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 24
-            }}>
-              <div>
-                <label style={{
-                  fontWeight: 600,
-                  color: '#667eea',
-                  fontSize: '16px',
-                  marginBottom: '8px',
-                  display: 'block'
-                }}>Username</label>
-                <input
-                  type="text"
-                  name="username"
-                  value={userForm.username}
-                  onChange={handleUserFormChange}
-                  placeholder="Enter username"
-                  required
-                  readOnly={!!userEditId}
-                  style={{
-                    padding: '16px 20px',
-                    borderRadius: '12px',
-                    border: '2px solid rgba(102, 126, 234, 0.2)',
-                    fontSize: '16px',
-                    width: '100%',
-                    transition: 'all 0.2s ease',
-                    outline: 'none',
-                    background: userEditId ? '#f8fafc' : '#fff'
-                  }}
-                  onFocus={(e) => !userEditId && (e.target.style.borderColor = '#667eea')}
-                  onBlur={(e) => !userEditId && (e.target.style.borderColor = 'rgba(102, 126, 234, 0.2)')}
-                />
-              </div>
-
-              {!userEditId && (
                 <div>
                   <label style={{
                     fontWeight: 600,
@@ -9024,13 +9370,12 @@ export default function AdminDashboard() {
                     fontSize: '16px',
                     marginBottom: '8px',
                     display: 'block'
-                  }}>Password</label>
+                  }}>Subcategory Name</label>
                   <input
-                    type="password"
-                    name="password"
-                    value={userForm.password || ''}
-                    onChange={handleUserFormChange}
-                    placeholder="Enter password"
+                    type="text"
+                    value={subName}
+                    onChange={e => setSubName(e.target.value)}
+                    placeholder="Enter subcategory name"
                     required
                     style={{
                       padding: '16px 20px',
@@ -9045,224 +9390,445 @@ export default function AdminDashboard() {
                     onBlur={(e) => e.target.style.borderColor = 'rgba(102, 126, 234, 0.2)'}
                   />
                 </div>
-              )}
 
-              <div>
-                <label style={{
-                  fontWeight: 600,
-                  color: '#667eea',
-                  fontSize: '16px',
-                  marginBottom: '8px',
-                  display: 'block'
-                }}>Role</label>
-                <select
-                  name="role"
-                  value={userForm.role}
-                  onChange={handleUserFormChange}
-                  style={{
-                    padding: '16px 20px',
-                    borderRadius: '12px',
-                    border: '2px solid rgba(102, 126, 234, 0.2)',
-                    fontSize: '16px',
-                    width: '100%',
-                    transition: 'all 0.2s ease',
-                    outline: 'none',
-                    background: '#fff'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = '#667eea'}
-                  onBlur={(e) => e.target.style.borderColor = 'rgba(102, 126, 234, 0.2)'}
-                >
-                  <option value="consultant">Consultant</option>
-                  <option value="superadmin">Superadmin</option>
-                </select>
-              </div>
-
-              <div style={{
-                display: 'flex',
-                gap: 16,
-                justifyContent: 'center',
-                marginTop: 16
-              }}>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  style={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '12px',
-                    padding: '16px 32px',
-                    fontWeight: 700,
-                    fontSize: '16px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-                    minWidth: '120px'
-                  }}
-                  onMouseEnter={(e) => !loading && (e.currentTarget.style.transform = 'translateY(-2px)')}
-                  onMouseLeave={(e) => !loading && (e.currentTarget.style.transform = 'translateY(0)')}
-                >
-                  {loading ? 'Saving...' : (userEditId ? 'Update' : 'Add')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowUserModal(false)}
-                  style={{
-                    background: 'rgba(102, 126, 234, 0.1)',
+                <div>
+                  <label style={{
+                    fontWeight: 600,
                     color: '#667eea',
-                    border: '2px solid rgba(102, 126, 234, 0.3)',
-                    borderRadius: '12px',
-                    padding: '16px 32px',
-                    fontWeight: 700,
                     fontSize: '16px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    minWidth: '120px'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.2)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.1)'}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+                    marginBottom: '8px',
+                    display: 'block'
+                  }}>Category</label>
+                  <select
+                    value={subCatId}
+                    onChange={e => setSubCatId(Number(e.target.value))}
+                    required
+                    style={{
+                      padding: '16px 20px',
+                      borderRadius: '12px',
+                      border: '2px solid rgba(102, 126, 234, 0.2)',
+                      fontSize: '16px',
+                      width: '100%',
+                      transition: 'all 0.2s ease',
+                      outline: 'none',
+                      background: '#fff'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                    onBlur={(e) => e.target.style.borderColor = 'rgba(102, 126, 234, 0.2)'}
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  gap: 16,
+                  justifyContent: 'center',
+                  marginTop: 16
+                }}>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '16px 32px',
+                      fontWeight: 700,
+                      fontSize: '16px',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                      minWidth: '120px'
+                    }}
+                    onMouseEnter={(e) => !loading && (e.currentTarget.style.transform = 'translateY(-2px)')}
+                    onMouseLeave={(e) => !loading && (e.currentTarget.style.transform = 'translateY(0)')}
+                  >
+                    {loading ? 'Saving...' : (subEditId ? 'Update' : 'Add')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSubcategoryModal(false)}
+                    style={{
+                      background: 'rgba(102, 126, 234, 0.1)',
+                      color: '#667eea',
+                      border: '2px solid rgba(102, 126, 234, 0.3)',
+                      borderRadius: '12px',
+                      padding: '16px 32px',
+                      fontWeight: 700,
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      minWidth: '120px'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.2)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.1)'}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
+
+      {/* User Modal */}
+      {
+        showUserModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 3000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }} onClick={e => { if (e.target === e.currentTarget) setShowUserModal(false); }}>
+            <div style={{
+              background: '#fff',
+              borderRadius: '20px',
+              padding: '40px',
+              minWidth: '90vw',
+              maxWidth: '600px',
+              maxHeight: '90vh',
+              boxShadow: '0 20px 60px rgba(102, 126, 234, 0.2)',
+              position: 'relative',
+              overflow: 'auto'
+            }}>
+              <button
+                onClick={() => setShowUserModal(false)}
+                aria-label="Close user modal"
+                style={{
+                  position: 'absolute',
+                  top: 20,
+                  right: 20,
+                  background: 'rgba(102, 126, 234, 0.1)',
+                  border: 'none',
+                  fontSize: 24,
+                  color: '#667eea',
+                  cursor: 'pointer',
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.2)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.1)'}
+              >
+                ×
+              </button>
+              <h2 style={{
+                color: '#667eea',
+                fontWeight: 700,
+                marginBottom: 32,
+                fontSize: 'clamp(24px, 4vw, 32px)',
+                textAlign: 'center',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>{userEditId ? 'Edit' : 'Add'} User</h2>
+
+              <form onSubmit={handleUserSubmit} style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 24
+              }}>
+                <div>
+                  <label style={{
+                    fontWeight: 600,
+                    color: '#667eea',
+                    fontSize: '16px',
+                    marginBottom: '8px',
+                    display: 'block'
+                  }}>Username</label>
+                  <input
+                    type="text"
+                    name="username"
+                    value={userForm.username}
+                    onChange={handleUserFormChange}
+                    placeholder="Enter username"
+                    required
+                    readOnly={!!userEditId}
+                    style={{
+                      padding: '16px 20px',
+                      borderRadius: '12px',
+                      border: '2px solid rgba(102, 126, 234, 0.2)',
+                      fontSize: '16px',
+                      width: '100%',
+                      transition: 'all 0.2s ease',
+                      outline: 'none',
+                      background: userEditId ? '#f8fafc' : '#fff'
+                    }}
+                    onFocus={(e) => !userEditId && (e.target.style.borderColor = '#667eea')}
+                    onBlur={(e) => !userEditId && (e.target.style.borderColor = 'rgba(102, 126, 234, 0.2)')}
+                  />
+                </div>
+
+                {!userEditId && (
+                  <div>
+                    <label style={{
+                      fontWeight: 600,
+                      color: '#667eea',
+                      fontSize: '16px',
+                      marginBottom: '8px',
+                      display: 'block'
+                    }}>Password</label>
+                    <input
+                      type="password"
+                      name="password"
+                      value={userForm.password || ''}
+                      onChange={handleUserFormChange}
+                      placeholder="Enter password"
+                      required
+                      style={{
+                        padding: '16px 20px',
+                        borderRadius: '12px',
+                        border: '2px solid rgba(102, 126, 234, 0.2)',
+                        fontSize: '16px',
+                        width: '100%',
+                        transition: 'all 0.2s ease',
+                        outline: 'none'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                      onBlur={(e) => e.target.style.borderColor = 'rgba(102, 126, 234, 0.2)'}
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label style={{
+                    fontWeight: 600,
+                    color: '#667eea',
+                    fontSize: '16px',
+                    marginBottom: '8px',
+                    display: 'block'
+                  }}>Role</label>
+                  <select
+                    name="role"
+                    value={userForm.role}
+                    onChange={handleUserFormChange}
+                    style={{
+                      padding: '16px 20px',
+                      borderRadius: '12px',
+                      border: '2px solid rgba(102, 126, 234, 0.2)',
+                      fontSize: '16px',
+                      width: '100%',
+                      transition: 'all 0.2s ease',
+                      outline: 'none',
+                      background: '#fff'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                    onBlur={(e) => e.target.style.borderColor = 'rgba(102, 126, 234, 0.2)'}
+                  >
+                    <option value="consultant">Consultant</option>
+                    <option value="superadmin">Superadmin</option>
+                  </select>
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  gap: 16,
+                  justifyContent: 'center',
+                  marginTop: 16
+                }}>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '16px 32px',
+                      fontWeight: 700,
+                      fontSize: '16px',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                      minWidth: '120px'
+                    }}
+                    onMouseEnter={(e) => !loading && (e.currentTarget.style.transform = 'translateY(-2px)')}
+                    onMouseLeave={(e) => !loading && (e.currentTarget.style.transform = 'translateY(0)')}
+                  >
+                    {loading ? 'Saving...' : (userEditId ? 'Update' : 'Add')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowUserModal(false)}
+                    style={{
+                      background: 'rgba(102, 126, 234, 0.1)',
+                      color: '#667eea',
+                      border: '2px solid rgba(102, 126, 234, 0.3)',
+                      borderRadius: '12px',
+                      padding: '16px 32px',
+                      fontWeight: 700,
+                      fontSize: '16px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      minWidth: '120px'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.2)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(102, 126, 234, 0.1)'}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      }
 
       {/* Footer */}
       <Footer />
 
       {/* Success Popup */}
-      {showSuccessPopup && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          background: '#10b981',
-          color: 'white',
-          padding: '16px 24px',
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          zIndex: 5000,
-          animation: 'slideInRight 0.3s ease-out'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '20px' }}>✅</span>
-            <span>{successMessage}</span>
-            <button
-              onClick={() => setShowSuccessPopup(false)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'white',
-                fontSize: '18px',
-                cursor: 'pointer',
-                marginLeft: '12px'
-              }}
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          background: 'rgba(0,0,0,0.5)',
-          zIndex: 4000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
+      {
+        showSuccessPopup && (
           <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '32px',
-            maxWidth: '400px',
-            textAlign: 'center',
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            background: '#10b981',
+            color: 'white',
+            padding: '16px 24px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            zIndex: 5000,
+            animation: 'slideInRight 0.3s ease-out'
           }}>
-            <h3 style={{ color: '#dc2626', marginBottom: '16px', fontSize: '20px' }}>
-              Delete {deleteBlogId ? 'Blog' : deleteConsultantId ? 'Consultant' : 'Product'}
-            </h3>
-            <p style={{ marginBottom: '24px', color: '#374151' }}>
-              Are you sure you want to delete <strong>{deleteBlogId ? deleteBlogName : deleteConsultantId ? deleteConsultantName : deleteProductName}</strong>? This action cannot be undone.
-            </p>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '20px' }}>✅</span>
+              <span>{successMessage}</span>
               <button
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  setDeleteConsultantId(null);
-                  setDeleteConsultantName('');
-                  setDeleteBlogId(null);
-                  setDeleteBlogName('');
-                  setDeleteProductId(null);
-                  setDeleteProductName('');
-                }}
+                onClick={() => setShowSuccessPopup(false)}
                 style={{
-                  background: '#6b7280',
-                  color: 'white',
+                  background: 'none',
                   border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '6px',
+                  color: 'white',
+                  fontSize: '18px',
                   cursor: 'pointer',
-                  fontWeight: '600'
+                  marginLeft: '12px'
                 }}
               >
-                Cancel
+                ×
               </button>
-              <button
-                onClick={async () => {
-                  if (deleteBlogId) {
-                    await handleBlogDelete();
-                  } else if (deleteConsultantId) {
-                    await handleConsultantDelete();
-                  } else if (deleteProductId) {
-                    try {
-                      const response = await fetch(getApiUrl(`api/products/${deleteProductId}`), {
-                        method: 'DELETE'
-                      });
+            </div>
+          </div>
+        )
+      }
 
-                      if (response.ok) {
-                        setProducts(products.filter(p => p.id !== deleteProductId));
-                        setSuccessMessage('Product deleted successfully!');
-                        setShowSuccessPopup(true);
-                      } else {
+      {/* Delete Confirmation Modal */}
+      {
+        showDeleteModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 4000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '32px',
+              maxWidth: '400px',
+              textAlign: 'center',
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+            }}>
+              <h3 style={{ color: '#dc2626', marginBottom: '16px', fontSize: '20px' }}>
+                Delete {deleteBlogId ? 'Blog' : deleteConsultantId ? 'Consultant' : 'Product'}
+              </h3>
+              <p style={{ marginBottom: '24px', color: '#374151' }}>
+                Are you sure you want to delete <strong>{deleteBlogId ? deleteBlogName : deleteConsultantId ? deleteConsultantName : deleteProductName}</strong>? This action cannot be undone.
+              </p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeleteConsultantId(null);
+                    setDeleteConsultantName('');
+                    setDeleteBlogId(null);
+                    setDeleteBlogName('');
+                    setDeleteProductId(null);
+                    setDeleteProductName('');
+                  }}
+                  style={{
+                    background: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (deleteBlogId) {
+                      await handleBlogDelete();
+                    } else if (deleteConsultantId) {
+                      await handleConsultantDelete();
+                    } else if (deleteProductId) {
+                      try {
+                        const response = await fetch(getApiUrl(`api/products/${deleteProductId}`), {
+                          method: 'DELETE'
+                        });
+
+                        if (response.ok) {
+                          setProducts(products.filter(p => p.id !== deleteProductId));
+                          setSuccessMessage('Product deleted successfully!');
+                          setShowSuccessPopup(true);
+                        } else {
+                          setProducts(products.filter(p => p.id !== deleteProductId));
+                          setSuccessMessage('Product removed from view (backend delete not implemented)');
+                          setShowSuccessPopup(true);
+                        }
+                      } catch (error) {
                         setProducts(products.filter(p => p.id !== deleteProductId));
                         setSuccessMessage('Product removed from view (backend delete not implemented)');
                         setShowSuccessPopup(true);
                       }
-                    } catch (error) {
-                      setProducts(products.filter(p => p.id !== deleteProductId));
-                      setSuccessMessage('Product removed from view (backend delete not implemented)');
-                      setShowSuccessPopup(true);
                     }
-                  }
-                  setShowDeleteModal(false);
-                }}
-                style={{
-                  background: '#dc2626',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                Delete
-              </button>
+                    setShowDeleteModal(false);
+                  }}
+                  style={{
+                    background: '#dc2626',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Confirm Modal */}
       {/* <ConfirmModal
@@ -9272,6 +9838,6 @@ export default function AdminDashboard() {
         onConfirm={confirmDelete}
         onCancel={() => setConfirmModal({ open: false, type: '', id: null, name: '' })}
       /> */}
-    </div>
+    </div >
   );
 }
