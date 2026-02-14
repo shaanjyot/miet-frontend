@@ -46,6 +46,8 @@ interface Consultant {
   subcategory_ids?: number[] | string[];
   slots?: string[];
   city?: string;
+  approval_status?: 'pending' | 'approved' | 'rejected';
+  approval_reason?: string | null;
 }
 
 interface User {
@@ -227,7 +229,12 @@ export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [ailmentsExpanded, setAilmentsExpanded] = useState(false);
   const [activeMenu, setActiveMenu] = useState<'dashboard' | 'categories' | 'subcategories' | 'consultants' | 'users' | 'services' | 'products' | 'blogs' | 'webinars' | 'consultations' | 'gallery' | 'cms' | 'team' | 'programmes'>('dashboard');
+  const [consultants, setConsultants] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [services, setServices] = useState<ServiceType[]>([]);
   const [isClient, setIsClient] = useState(false);
+
+  console.log("Consultants state:", consultants);
 
   // Helper for resolving image URLs
   const getImageUrl = (path: string | undefined, fallback: string) => {
@@ -239,7 +246,6 @@ export default function AdminDashboard() {
   };
 
   // Consultant state
-  const [consultants, setConsultants] = useState<Consultant[]>([]);
   const [consultantForm, setConsultantForm] = useState<ConsultantForm>({
     category_ids: [],
     subcategory_ids: [],
@@ -262,7 +268,6 @@ export default function AdminDashboard() {
   const [consultantSlots, setConsultantSlots] = useState<{ date: string; time: string; endTime?: string }[]>([]);
   const [slotDuration, setSlotDuration] = useState<number>(60); // Default 60 minutes
   // Users state
-  const [users, setUsers] = useState<User[]>([]);
   const [userForm, setUserForm] = useState<{ id?: number; username: string; password?: string; role: string }>({ username: '', password: '', role: 'consultant' });
   const [userEditId, setUserEditId] = useState<number | null>(null);
   // Services state
@@ -303,7 +308,6 @@ export default function AdminDashboard() {
   // Track if consultant form has been loaded for editing
   const [consultantFormLoaded, setConsultantFormLoaded] = useState(false);
   // Services state for list and modal
-  const [services, setServices] = useState<ServiceType[]>([]);
   const [serviceProfile, setServiceProfile] = useState<ServiceType | null>(null);
   const [showServiceProfileModal, setShowServiceProfileModal] = useState(false);
   // Add state for name and email
@@ -348,6 +352,7 @@ export default function AdminDashboard() {
   const [itemsPerPage] = useState(10);
   const [sortField, setSortField] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [approvalFilter, setApprovalFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
   // Webinar state
   const [webinars, setWebinars] = useState<Webinar[]>([]);
@@ -460,8 +465,9 @@ export default function AdminDashboard() {
   // Programmes State
   const [programmeData, setProgrammeData] = useState<Programme[]>([]);
   const [programmeForm, setProgrammeForm] = useState<Programme>({
-    title: '', description: '', image: '',
-    p1_title: '', p1_description: '', p2_title: '', p2_description: ''
+    title: '',
+    description: '',
+    image: ''
   });
   const [programmeEditId, setProgrammeEditId] = useState<number | null>(null);
   const [deleteProgrammeId, setDeleteProgrammeId] = useState<number | null>(null);
@@ -492,7 +498,7 @@ export default function AdminDashboard() {
   // Auth check
   useEffect(() => {
     if (!isClient) return;
-    const token = localStorage.getItem("admin_jwt");
+    const token = localStorage.getItem("token");
     if (!token) {
       router.replace("/admin/login");
     }
@@ -505,8 +511,12 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    if (activeMenu === 'consultants') fetchConsultants();
-  }, [activeMenu]);
+    if (activeMenu === 'consultants') fetchConsultants(approvalFilter);
+  }, [activeMenu, approvalFilter]);
+
+  useEffect(() => {
+    fetchConsultants("all");
+  }, []);
 
   useEffect(() => {
     if (activeMenu === 'services') fetchConsultants();
@@ -516,7 +526,7 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const res = await fetch(getApiUrl("api/categories"), {
-        headers: { Authorization: `Bearer ${localStorage.getItem("admin_jwt")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch categories");
       setCategories(await res.json());
@@ -530,7 +540,7 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const res = await fetch(getApiUrl("api/subcategories"), {
-        headers: { Authorization: `Bearer ${localStorage.getItem("admin_jwt")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       if (!res.ok) throw new Error("Failed to fetch subcategories");
       setSubcategories(await res.json());
@@ -541,50 +551,93 @@ export default function AdminDashboard() {
     }
   }
 
-  async function fetchConsultants() {
+  const fetchConsultants = async (approvalFilter = "all") => {
     try {
-      const token = localStorage.getItem("admin_jwt");
-      const res = await fetch(getApiUrl("api/consultants"), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const consultants = await res.json();
-        // For each consultant, fetch their slots from the backend
-        const consultantsWithSlots = await Promise.all(
-          consultants.map(async (c: Consultant) => {
-            try {
-              const slotRes = await fetch(getApiUrl(`api/consultants/${c.id}/availability`), {
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              if (slotRes.ok) {
-                const slots = await slotRes.json();
-                return {
-                  ...c,
-                  slots: slots.map((slot: { date: string; start_time: string; end_time: string; id: number }) => `${slot.date} ${slot.start_time}${slot.end_time ? '-' + slot.end_time : ''}`),
-                };
-              } else {
-                return { ...c, slots: [] };
-              }
-            } catch (error) {
+      const token = localStorage.getItem("token");
 
-              return { ...c, slots: [] };
-            }
-          })
-        );
-        setConsultants(consultantsWithSlots);
-      } else {
-
-        setConsultants([]);
+      if (!token) {
+        console.error("No admin token found");
+        return;
       }
-    } catch (error) {
 
+      const url =
+        approvalFilter === "all"
+          ? "http://localhost:4000/api/consultants"
+          : `http://localhost:4000/api/consultants?approval=${approvalFilter}`;
+
+      console.log("Fetching from:", url);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("Response status:", response.status);
+
+      if (!response.ok) {
+        throw new Error("API failed");
+      }
+
+      const data = await response.json();
+
+      console.log("Consultants received:", data);
+
+      setConsultants(Array.isArray(data) ? data : []);
+
+    } catch (error) {
+      console.error("Fetch consultants error:", error);
       setConsultants([]);
     }
-  }
+  };
+
+  const approveConsultant = async (id: number, status: 'approved' | 'rejected') => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(getApiUrl(`api/consultants/${id}/approve`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          status,
+          reason: status === 'rejected' ? 'Rejected by admin' : null
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        addNotification({
+          type: 'success',
+          title: 'Success',
+          message: `Consultant ${status} successfully!`
+        });
+        fetchConsultants(); // refresh list
+      } else {
+        console.error(data.error);
+        addNotification({
+          type: 'error',
+          title: 'Error',
+          message: data.error || `Failed to ${status} consultant`
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      addNotification({
+        type: 'error',
+        title: 'Error',
+        message: `An error occurred while trying to ${status} the consultant`
+      });
+    }
+  };
 
   // Fetch users
   async function fetchUsers() {
-    const token = localStorage.getItem("admin_jwt");
+    const token = localStorage.getItem("token");
     const res = await fetch(getApiUrl("api/users"), {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -596,7 +649,7 @@ export default function AdminDashboard() {
 
   // Fetch services
   async function fetchServices() {
-    const token = localStorage.getItem('admin_jwt');
+    const token = localStorage.getItem('token');
     const res = await fetch(getApiUrl("api/services"), {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -636,7 +689,7 @@ export default function AdminDashboard() {
   // Fetch webinars
   async function fetchWebinars() {
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const res = await fetch(getApiUrl("api/webinars"), {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -657,7 +710,7 @@ export default function AdminDashboard() {
   // Fetch consultations
   async function fetchConsultations() {
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const res = await fetch(getApiUrl("api/admin/consultations"), {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -699,7 +752,7 @@ export default function AdminDashboard() {
         method,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("admin_jwt")}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({ name: catName }),
       });
@@ -724,7 +777,7 @@ export default function AdminDashboard() {
     try {
       const res = await fetch(getApiUrl(`api/categories/${id}`), {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${localStorage.getItem("admin_jwt")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       if (!res.ok) throw new Error();
       fetchCategories();
@@ -746,7 +799,7 @@ export default function AdminDashboard() {
         method,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("admin_jwt")}`,
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({ name: subName, category_id: subCatId }),
       });
@@ -773,7 +826,7 @@ export default function AdminDashboard() {
     try {
       const res = await fetch(getApiUrl(`api/subcategories/${id}`), {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${localStorage.getItem("admin_jwt")}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       if (!res.ok) throw new Error();
       fetchSubcategories();
@@ -785,7 +838,7 @@ export default function AdminDashboard() {
   }
 
   function handleLogout() {
-    localStorage.removeItem("admin_jwt");
+    localStorage.removeItem("token");
     router.replace("/admin/login");
   }
 
@@ -817,7 +870,7 @@ export default function AdminDashboard() {
   // Helper to save slots to backend
   async function saveConsultantSlots(consultantId: number, slots: { date: string; time: string; endTime?: string }[]) {
     // First, fetch existing slots and delete them all (for update)
-    const token = localStorage.getItem("admin_jwt");
+    const token = localStorage.getItem("token");
     const res = await fetch(getApiUrl(`api/consultants/${consultantId}/availability`), { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) {
       const existing = await res.json();
@@ -848,7 +901,7 @@ export default function AdminDashboard() {
     }
 
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const method = consultantEditId ? "PUT" : "POST";
       const url = consultantEditId ? getApiUrl(`api/consultants/${consultantEditId}`) : getApiUrl('api/consultants');
 
@@ -913,7 +966,7 @@ export default function AdminDashboard() {
         subcategory_ids: Array.isArray(c.subcategory_ids) ? c.subcategory_ids.map(id => String(id)) : [],
       });
       // Fetch slots from backend
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const res = await fetch(getApiUrl(`api/consultants/${c.id}/availability`), { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) {
         const slots = await res.json();
@@ -933,7 +986,7 @@ export default function AdminDashboard() {
   // Refactor delete handlers to use modal
   async function handleConsultantDelete() {
     if (!deleteConsultantId) return;
-    const token = localStorage.getItem("admin_jwt");
+    const token = localStorage.getItem("token");
     const res = await fetch(getApiUrl(`api/consultants/${deleteConsultantId}`), {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
@@ -947,7 +1000,7 @@ export default function AdminDashboard() {
   }
   async function handleConsultantProfile(id?: number) {
     if (typeof id !== 'number') return;
-    const token = localStorage.getItem("admin_jwt");
+    const token = localStorage.getItem("token");
     const res = await fetch(getApiUrl(`api/consultants/${id}`), {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -1029,7 +1082,7 @@ export default function AdminDashboard() {
   const defaultMapCenter = { lat: 28.6139, lng: 77.2090 };
 
   async function handleToggleConsultantStatus(c: Consultant) {
-    const token = localStorage.getItem("admin_jwt");
+    const token = localStorage.getItem("token");
     const newStatus = c.status === 'online' ? 'offline' : 'online';
     await fetch(getApiUrl(`api/consultants/${c.id}/status`), {
       method: 'POST',
@@ -1042,7 +1095,7 @@ export default function AdminDashboard() {
   // Users CRUD
   async function handleUserSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const token = localStorage.getItem("admin_jwt");
+    const token = localStorage.getItem("token");
     const method = userEditId ? "PUT" : "POST";
     const url = userEditId ? getApiUrl(`api/users/${userEditId}`) : getApiUrl('api/users');
     const body = userEditId ? { username: userForm.username, role: userForm.role } : userForm;
@@ -1064,7 +1117,7 @@ export default function AdminDashboard() {
   }
   async function handleUserDelete(id: number) {
     if (!confirm("Delete this user?")) return;
-    const token = localStorage.getItem("admin_jwt");
+    const token = localStorage.getItem("token");
     const res = await fetch(getApiUrl(`api/users/${id}`), {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
@@ -1080,7 +1133,7 @@ export default function AdminDashboard() {
   }
 
   async function handleToggleUserStatus(u: User) {
-    const token = localStorage.getItem("admin_jwt");
+    const token = localStorage.getItem("token");
     const newStatus = u.status === 'active' ? 'inactive' : 'active';
     await fetch(getApiUrl(`api/users/${u.id}/status`), {
       method: 'POST',
@@ -1095,7 +1148,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     setServiceFormLoading(true);
     setServiceFormMessage('');
-    const token = localStorage.getItem('admin_jwt');
+    const token = localStorage.getItem('token');
     const method = serviceEditId ? 'PUT' : 'POST';
     const url = serviceEditId ? getApiUrl(`api/services/${serviceEditId}`) : getApiUrl('api/services');
     try {
@@ -1351,7 +1404,7 @@ export default function AdminDashboard() {
 
   // View service details
   async function handleServiceProfile(id: number) {
-    const token = localStorage.getItem('admin_jwt');
+    const token = localStorage.getItem('token');
     const res = await fetch(getApiUrl(`api/services/${id}`), {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -1370,7 +1423,7 @@ export default function AdminDashboard() {
   // Delete service
   async function handleServiceDelete(id: number) {
     if (!confirm('Delete this service?')) return;
-    const token = localStorage.getItem('admin_jwt');
+    const token = localStorage.getItem('token');
     const res = await fetch(getApiUrl(`api/services/${id}`), {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
@@ -1503,7 +1556,7 @@ export default function AdminDashboard() {
     if (e) e.preventDefault();
 
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const method = blogEditId ? "PUT" : "POST";
       const url = blogEditId
         ? getApiUrl(`api/blogs/${blogEditId}`)
@@ -1553,7 +1606,7 @@ export default function AdminDashboard() {
     if (!deleteBlogId) return;
 
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const res = await fetch(getApiUrl(`api/blogs/${deleteBlogId}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
@@ -1581,7 +1634,7 @@ export default function AdminDashboard() {
   // Gallery CRUD
   async function fetchGallery() {
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const res = await fetch(getApiUrl('api/gallery?status=all'), {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -1597,7 +1650,7 @@ export default function AdminDashboard() {
   async function handleGalleryUpload(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (galleryFiles.length === 0) { alert('Please select at least one image'); return; }
-    const token = localStorage.getItem("admin_jwt");
+    const token = localStorage.getItem("token");
     if (!token) {
       alert('Please log in to the admin panel first.');
       return;
@@ -1641,7 +1694,7 @@ export default function AdminDashboard() {
   async function handleGalleryUpdate(id: number) {
     try {
       setLoading(true);
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const formData = new FormData();
       if (galleryEditForm.title !== undefined) formData.append('title', galleryEditForm.title);
       if (galleryEditForm.description !== undefined) formData.append('description', galleryEditForm.description);
@@ -1671,7 +1724,7 @@ export default function AdminDashboard() {
   async function handleGalleryDelete(id: number) {
     if (!confirm('Are you sure you want to delete this gallery image?')) return;
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const res = await fetch(getApiUrl(`api/gallery/${id}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
@@ -1699,7 +1752,7 @@ export default function AdminDashboard() {
   // CMS CRUD
   async function fetchCmsContent() {
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const url = cmsPageFilter === 'all' ? 'api/cms' : `api/cms/${cmsPageFilter}`;
       const res = await fetch(getApiUrl(url), {
         headers: { Authorization: `Bearer ${token}` }
@@ -1724,7 +1777,7 @@ export default function AdminDashboard() {
   async function handleCmsPreload() {
     try {
       setLoading(true);
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const res = await fetch(getApiUrl('api/cms/seed'), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
@@ -1751,7 +1804,7 @@ export default function AdminDashboard() {
     }
     try {
       setLoading(true);
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const res = await fetch(getApiUrl('api/cms'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -1776,7 +1829,7 @@ export default function AdminDashboard() {
   async function handleCmsDelete(id: number) {
     if (!confirm('Are you sure you want to delete this CMS entry?')) return;
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const res = await fetch(getApiUrl(`api/cms/${id}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
@@ -1823,7 +1876,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     setLoading(true);
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const method = teamEditId ? "PUT" : "POST";
       const url = teamEditId ? `http://localhost:4000/api/team/${teamEditId}` : 'http://localhost:4000/api/team';
       const res = await fetch(url, {
@@ -1850,7 +1903,7 @@ export default function AdminDashboard() {
 
   async function handleTeamDelete(id: number) {
     if (!confirm('Delete this team member?')) return;
-    const token = localStorage.getItem("admin_jwt");
+    const token = localStorage.getItem("token");
     await fetch(`http://localhost:4000/api/team/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     await fetchDashboardData();
   }
@@ -1872,7 +1925,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     setLoading(true);
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const method = programmeEditId ? "PUT" : "POST";
       const url = programmeEditId ? `http://localhost:4000/api/programmes/${programmeEditId}` : 'http://localhost:4000/api/programmes';
       const res = await fetch(url, {
@@ -1899,7 +1952,7 @@ export default function AdminDashboard() {
 
   async function handleProgrammeDelete(id: number) {
     if (!confirm('Delete this programme?')) return;
-    const token = localStorage.getItem("admin_jwt");
+    const token = localStorage.getItem("token");
     await fetch(`http://localhost:4000/api/programmes/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     await fetchProgrammes();
   }
@@ -1909,7 +1962,7 @@ export default function AdminDashboard() {
     e.preventDefault();
 
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const method = webinarEditId ? "PUT" : "POST";
       const url = webinarEditId
         ? getApiUrl(`api/webinars/${webinarEditId}`)
@@ -1963,7 +2016,7 @@ export default function AdminDashboard() {
     if (!confirm('Are you sure you want to delete this webinar?')) return;
 
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const res = await fetch(getApiUrl(`api/webinars/${webinarId}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
@@ -1990,7 +2043,7 @@ export default function AdminDashboard() {
     e.preventDefault();
 
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const method = consultationEditId ? "PUT" : "POST";
       const url = consultationEditId
         ? getApiUrl(`api/admin/consultations/${consultationEditId}`)
@@ -2047,7 +2100,7 @@ export default function AdminDashboard() {
     if (!confirm('Are you sure you want to delete this consultation?')) return;
 
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const res = await fetch(getApiUrl(`api/admin/consultations/${consultationId}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
@@ -2068,7 +2121,7 @@ export default function AdminDashboard() {
   // Google OAuth setup handler
   async function handleGoogleOAuthSetup() {
     try {
-      const token = localStorage.getItem("admin_jwt");
+      const token = localStorage.getItem("token");
       const res = await fetch(getApiUrl("api/auth/admin/google"), {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -2094,6 +2147,8 @@ export default function AdminDashboard() {
     onEdit,
     onDelete,
     onView,
+    onApprove,
+    onReject,
     searchPlaceholder = "Search...",
     title = "Data Table"
   }: {
@@ -2102,6 +2157,8 @@ export default function AdminDashboard() {
     onEdit?: (item: any) => void;
     onDelete?: (item: any) => void;
     onView?: (item: any) => void;
+    onApprove?: (item: any) => void;
+    onReject?: (item: any) => void;
     searchPlaceholder?: string;
     title?: string;
   }) => {
@@ -2285,6 +2342,49 @@ export default function AdminDashboard() {
                             <FaEye size={14} /> View
                           </button>
                         )}
+
+                        {onApprove && row.approval_status === 'pending' && (
+                          <button
+                            onClick={() => onApprove(row)}
+                            style={{
+                              background: 'rgba(34, 197, 94, 0.1)',
+                              color: '#16a34a',
+                              border: '2px solid rgba(34, 197, 94, 0.3)',
+                              borderRadius: '6px',
+                              padding: '8px 12px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              fontSize: '14px'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(34, 197, 94, 0.2)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(34, 197, 94, 0.1)'}
+                          >
+                            Approve
+                          </button>
+                        )}
+
+                        {onReject && row.approval_status === 'pending' && (
+                          <button
+                            onClick={() => onReject(row)}
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.1)',
+                              color: '#dc2626',
+                              border: '2px solid rgba(239, 68, 68, 0.3)',
+                              borderRadius: '6px',
+                              padding: '8px 12px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              fontSize: '14px'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                          >
+                            Reject
+                          </button>
+                        )}
+
                         {onEdit && (
                           <button
                             onClick={() => onEdit(row)}
@@ -3393,6 +3493,44 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
+              {/* Approval Filter */}
+              <div style={{
+                marginBottom: '20px',
+                display: 'flex',
+                gap: '12px',
+                alignItems: 'center',
+                background: '#fff',
+                padding: '12px 20px',
+                borderRadius: '12px',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+                width: 'fit-content'
+              }}>
+                <span style={{ fontWeight: 600, color: '#4a5568', fontSize: '14px' }}>Approval Status:</span>
+                <select
+                  value={approvalFilter}
+                  onChange={(e) => {
+                    const val = e.target.value as any;
+                    setApprovalFilter(val);
+                    fetchConsultants(val);
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    outline: 'none',
+                    fontSize: '14px',
+                    color: '#1a202c',
+                    cursor: 'pointer',
+                    background: '#f8fafc'
+                  }}
+                >
+                  <option value="all">All Consultants</option>
+                  <option value="pending">Pending Approval</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+
               <DataTable
                 data={consultants}
                 columns={[
@@ -3418,6 +3556,33 @@ export default function AdminDashboard() {
                   { key: 'username', label: 'Username', sortable: true },
                   { key: 'name', label: 'Name', sortable: true },
                   { key: 'email', label: 'Email', sortable: true },
+                  {
+                    key: 'approval_status',
+                    label: 'Approval Status',
+                    sortable: true,
+                    render: (value) => {
+                      const status = value || 'pending';
+                      let color = '#d97706'; // pending yellow-600
+                      let bg = '#fef3c7';    // yellow-100
+                      if (status === 'approved') { color = '#059669'; bg = '#d1fae5'; } // green-600/100
+                      if (status === 'rejected') { color = '#dc2626'; bg = '#fee2e2'; } // red-600/100
+
+                      return (
+                        <span style={{
+                          padding: '6px 12px',
+                          borderRadius: '20px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          color: color,
+                          backgroundColor: bg,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}>
+                          {status}
+                        </span>
+                      );
+                    }
+                  },
                   {
                     key: 'status',
                     label: 'Status',
@@ -3446,6 +3611,8 @@ export default function AdminDashboard() {
                   setShowConsultantModal(true);
                 }}
                 onDelete={(consultant) => showDeleteConsultantModal(consultant.id!, consultant.name)}
+                onApprove={(consultant) => approveConsultant(consultant.id!, 'approved')}
+                onReject={(consultant) => approveConsultant(consultant.id!, 'rejected')}
                 searchPlaceholder="Search consultants..."
                 title="Consultants"
               />
@@ -3874,7 +4041,7 @@ export default function AdminDashboard() {
                                 setConsultantForm(f => ({ ...f, is_pro: isPro } as any));
                                 if ((consultantForm as any).id) {
                                   try {
-                                    const token = localStorage.getItem('admin_jwt');
+                                    const token = localStorage.getItem('token');
                                     await fetch(getApiUrl(`api/consultants/${(consultantForm as any).id}/promote`), {
                                       method: 'POST',
                                       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

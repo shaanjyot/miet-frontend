@@ -1,7 +1,8 @@
 "use client";
 import React from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaTwitter, FaGoogle } from 'react-icons/fa';
+import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaGoogle } from 'react-icons/fa';
+import { FaXTwitter } from 'react-icons/fa6';
 
 export default function Footer() {
   const t = useTranslations('Footer');
@@ -56,14 +57,26 @@ export default function Footer() {
 
             {/* Brand Section */}
             <div style={{ textAlign: 'left' }}>
-              <div style={{
-                fontFamily: 'Righteous, cursive',
-                fontSize: 'clamp(2rem, 3vw, 2.5rem)',
-                color: '#ffffff',
-                marginBottom: '1rem',
-                textShadow: '0 2px 10px rgba(0,0,0,0.3)'
-              }}>
-                {t('brandName')}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                <img
+                  src="/miet-main.webp"
+                  alt="MieT Logo"
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '8px',
+                    background: '#ffffff',
+                    objectFit: 'cover'
+                  }}
+                />
+                <div style={{
+                  fontFamily: 'Righteous, cursive',
+                  fontSize: 'clamp(2rem, 3vw, 2.5rem)',
+                  color: '#ffffff',
+                  textShadow: '0 2px 10px rgba(0,0,0,0.3)'
+                }}>
+                  {t('brandName')}
+                </div>
               </div>
               <p style={{
                 fontSize: 'clamp(1rem, 1.2vw, 1.1rem)',
@@ -86,7 +99,7 @@ export default function Footer() {
                   { name: 'Instagram', icon: <FaInstagram />, href: 'https://www.instagram.com/miet.life/' },
                   { name: 'LinkedIn', icon: <FaLinkedinIn />, href: 'https://linkedin.com/in/miet-life-17a665313' },
                   { name: 'YouTube', icon: <FaYoutube />, href: 'https://youtube.com/@mietlife?si=Sin3Bpae5iP7MCYv' },
-                  { name: 'Twitter', icon: <FaTwitter />, href: '#' }
+                  { name: 'X', icon: <FaXTwitter />, href: '#' },
                 ].map((social) => (
                   <a
                     key={social.name}
@@ -278,24 +291,16 @@ export default function Footer() {
 
             {/* Legal Links Section */}
             <div style={{ textAlign: 'left' }}>
-              <h3 style={{
-                fontSize: 'clamp(1.3rem, 1.5vw, 1.4rem)',
-                fontWeight: '700',
-                color: '#ffffff',
-                marginBottom: '1.5rem',
-                textShadow: '0 1px 3px rgba(0,0,0,0.3)'
-              }}>
-                Legal
-              </h3>
               <div className="footer-legal-links" style={{
                 display: 'flex',
                 flexDirection: 'row',
                 flexWrap: 'wrap',
                 gap: '1rem',
-                alignItems: 'center'
+                alignItems: 'center',
+                marginTop: '3.5rem'
               }}>
                 {[
-                  { name: 'Privacy Policy', href: '/privacy' },
+                  { name: 'Legal Privacy Policy', href: '/privacy' },
                   { name: 'Terms & Conditions', href: '/terms' },
                   { name: 'Cancellation & Refund', href: '/cancellation-refund' },
                   { name: 'Shipping Policy', href: '/shipping' }
@@ -348,7 +353,7 @@ export default function Footer() {
               fontWeight: '500',
               lineHeight: '1.6'
             }}>
-              © 2025 Miet (Mind Inclusion Education Technology). All rights reserved. Powered by <a href="https://www.sabsoftzone.com" target="_blank" rel="noopener noreferrer" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: '600', transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.textShadow = '0 0 8px rgba(255,255,255,0.5)'} onMouseLeave={(e) => e.currentTarget.style.textShadow = 'none'}> SABsoftzone Pvt. Ltd. </a>
+              © 2026 Miet (Mind Inclusion Education Technology). All rights reserved. Powered by <a href="https://www.sabsoftzone.com" target="_blank" rel="noopener noreferrer" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: '600', transition: 'all 0.3s ease' }} onMouseEnter={(e) => e.currentTarget.style.textShadow = '0 0 8px rgba(255,255,255,0.5)'} onMouseLeave={(e) => e.currentTarget.style.textShadow = 'none'}> SABsoftzone Pvt. Ltd. </a>
             </p>
             {/* Move to Top Button */}
             <div style={{

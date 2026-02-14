@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getApiUrl } from "@/utils/api";
 import { FaEye, FaEyeSlash, FaLock, FaUser, FaShieldAlt, FaGoogle } from "react-icons/fa";
+import { useParams } from "next/navigation";
 import GoogleAuth from "@/components/GoogleAuth";
 import TopBar from "@/components/TopBar";
 import Footer from "@/components/Footer";
@@ -19,6 +20,7 @@ export default function ConsultantLogin() {
   const [loading, setLoading] = useState(false);
   const [isGoogleAuth, setIsGoogleAuth] = useState(false);
   const router = useRouter();
+  const { locale } = useParams();
 
   // Load saved credentials if remember me was checked
   useEffect(() => {
@@ -38,10 +40,11 @@ export default function ConsultantLogin() {
     const googleAuth = urlParams.get('google_auth');
 
     if (token && googleAuth === 'true') {
-      localStorage.setItem('consultant_jwt', token);
-      router.push('/consultant-dashboard');
+      console.log("Consultant token saved (Google):", token);
+      localStorage.setItem('consultant_token', token);
+      router.push(`/${locale}/consultant-dashboard`);
     }
-  }, []);
+  }, [locale]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,8 +61,10 @@ export default function ConsultantLogin() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
 
-      // Save JWT token
-      localStorage.setItem("consultant_jwt", data.token);
+      // Store consultant auth separately
+      console.log("Consultant token saved:", data.token);
+      localStorage.setItem('consultant_token', data.token);
+      localStorage.setItem('consultant_user', JSON.stringify(data.user));
 
       // Save credentials if remember me is checked
       if (rememberMe) {
@@ -70,7 +75,8 @@ export default function ConsultantLogin() {
         localStorage.removeItem("consultant_remember_me");
       }
 
-      router.push("/consultant-dashboard");
+      // Redirect correctly
+      router.push(`/${locale}/consultant-dashboard`);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);

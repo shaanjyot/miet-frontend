@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FaCalendarAlt, FaVideo, FaUserMd, FaClock, FaMapMarkerAlt, FaPhone, FaEnvelope, FaUsers, FaChartLine, FaBell, FaCog, FaSignOutAlt, FaPlus, FaEdit, FaTrash, FaEye } from 'react-icons/fa';
+import { useParams } from 'next/navigation';
 import TopBar from '@/components/TopBar';
 import Footer from '@/components/Footer';
 import { getApiUrl } from '@/utils/api';
@@ -80,18 +81,24 @@ export default function ConsultantDashboard() {
     start_time: '',
     end_time: ''
   });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
+  const { locale } = useParams();
 
   useEffect(() => {
-    checkAuthAndLoadData();
-  }, []);
+    const token = localStorage.getItem('consultant_token');
+    console.log("Consultant token found:", localStorage.getItem('consultant_token'));
 
-  const checkAuthAndLoadData = async () => {
-    const token = localStorage.getItem('consultant_jwt');
     if (!token) {
-      router.push('/consultants/login');
+      router.push(`/${locale}/consultants/login`);
       return;
     }
+
+    setIsAuthenticated(true);
+    checkAuthAndLoadData(token);
+  }, [locale]);
+
+  const checkAuthAndLoadData = async (token: string) => {
 
     try {
       // Load consultant profile
@@ -172,7 +179,7 @@ export default function ConsultantDashboard() {
     }
 
     try {
-      const token = localStorage.getItem('consultant_jwt');
+      const token = localStorage.getItem('consultant_token');
       const response = await fetch(`${getApiUrl('api/consultants/availability')}`, {
         method: 'POST',
         headers: {
@@ -199,7 +206,7 @@ export default function ConsultantDashboard() {
     if (!confirm('Are you sure you want to delete this availability slot?')) return;
 
     try {
-      const token = localStorage.getItem('consultant_jwt');
+      const token = localStorage.getItem('consultant_token');
       const response = await fetch(`${getApiUrl(`api/consultants/availability/${id}`)}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -217,8 +224,9 @@ export default function ConsultantDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('consultant_jwt');
-    router.push('/admin/login');
+    localStorage.removeItem('consultant_token');
+    localStorage.removeItem('consultant_user');
+    router.push(`/${locale}/consultants/login`);
   };
 
   if (loading) {
@@ -278,7 +286,7 @@ export default function ConsultantDashboard() {
             You need to be logged in as a consultant to access this dashboard
           </p>
           <button
-            onClick={() => router.push('/admin/login')}
+            onClick={() => router.push(`/${locale}/consultants/login`)}
             style={{
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               color: 'white',
@@ -1190,7 +1198,7 @@ export default function ConsultantDashboard() {
                           <button
                             onClick={async () => {
                               try {
-                                const token = localStorage.getItem('consultant_jwt');
+                                const token = localStorage.getItem('consultant_token');
                                 const response = await fetch(getApiUrl('api/consultants/subscribe'), {
                                   method: 'POST',
                                   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

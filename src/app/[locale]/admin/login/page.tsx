@@ -43,7 +43,7 @@ export default function AdminLogin() {
       if (!res.ok) throw new Error(data.error || "Login failed");
 
       // Save JWT token
-      localStorage.setItem("admin_jwt", data.token);
+      localStorage.setItem("token", data.token);
 
       // Save credentials if remember me is checked
       if (rememberMe) {
