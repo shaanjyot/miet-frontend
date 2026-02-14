@@ -12,7 +12,9 @@
     "searchHeading": "Search Consultants",
     "accessibility": "Accessibility",
     "highContrast": "High Contrast",
-    "cart": "Cart"
+    "cart": "Cart",
+    "consultantLogin": "Consultant Login",
+    "consultantSignup": "Consultant Signup"
   },
   "WelcomeBoard": {
     "title": "Comprehensive Support for Special Education and Mental Health Challenges",

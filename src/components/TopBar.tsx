@@ -677,6 +677,44 @@ export default function TopBar() {
           flexWrap: 'nowrap',
           flexShrink: 0
         }}>
+          {/* Consultant Login */}
+          {!isMobile && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <Link
+                href={`/${locale}/consultants/login`}
+                style={{
+                  color: highContrast ? '#fff' : '#667eea',
+                  textDecoration: 'none',
+                  fontSize: '0.9rem',
+                  fontWeight: '700',
+                  padding: '10px 18px',
+                  borderRadius: '12px',
+                  background: '#fff',
+                  border: `2px solid ${highContrast ? '#fff' : '#667eea'}`,
+                  transition: 'all 0.3s ease',
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = highContrast ? '#fff' : '#667eea';
+                  e.currentTarget.style.color = highContrast ? '#000' : '#fff';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 15px rgba(99, 102, 241, 0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#fff';
+                  e.currentTarget.style.color = highContrast ? '#fff' : '#667eea';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.1)';
+                }}
+              >
+                {text('consultantLogin')}
+              </Link>
+            </div>
+          )}
           {/* Cart Icon */}
           <Link href={`/${locale}/cart`} style={{
             position: 'relative',
@@ -1074,6 +1112,84 @@ export default function TopBar() {
                 <FaShoppingCart style={{ marginRight: '12px', fontSize: '16px' }} />
                 {text('cart')} {itemCount > 0 && `(${itemCount})`}
               </Link>
+            </div>
+
+            {/* Consultant Section */}
+            <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(99, 102, 241, 0.1)' }}>
+              <h3 style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: highContrast ? '#fff' : '#1e1b4b',
+                marginBottom: '12px'
+              }}>{text('consultants')}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <Link
+                  href={`/${locale}/consultants/login`}
+                  onClick={() => setMobileMenu(false)}
+                  style={{
+                    color: highContrast ? '#fff' : '#667eea',
+                    textDecoration: 'none',
+                    fontSize: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    transition: 'all 0.3s ease',
+                    fontWeight: '600',
+                    background: '#fff',
+                    border: `2px solid ${highContrast ? '#fff' : '#667eea'}`,
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.1)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = highContrast ? '#fff' : '#667eea';
+                    e.currentTarget.style.color = highContrast ? '#000' : '#fff';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 15px rgba(99, 102, 241, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#fff';
+                    e.currentTarget.style.color = highContrast ? '#fff' : '#667eea';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.1)';
+                  }}
+                >
+                  {text('consultantLogin')}
+                </Link>
+                <Link
+                  href={`/${locale}/consultants/signup`}
+                  onClick={() => setMobileMenu(false)}
+                  style={{
+                    color: highContrast ? '#fff' : '#667eea',
+                    textDecoration: 'none',
+                    fontSize: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    transition: 'all 0.3s ease',
+                    fontWeight: '600',
+                    background: '#fff',
+                    border: `2px solid ${highContrast ? '#fff' : '#667eea'}`,
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.1)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = highContrast ? '#fff' : '#667eea';
+                    e.currentTarget.style.color = highContrast ? '#000' : '#fff';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 15px rgba(99, 102, 241, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#fff';
+                    e.currentTarget.style.color = highContrast ? '#fff' : '#667eea';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.1)';
+                  }}
+                >
+                  {text('consultantSignup')}
+                </Link>
+              </div>
             </div>
 
             {/* Utility Controls */}

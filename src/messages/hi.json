@@ -12,7 +12,9 @@
         "searchHeading": "सलाहकार खोजें",
         "accessibility": "सुगम्यता",
         "highContrast": "High Contrast",
-        "cart": "कार्ट"
+        "cart": "कार्ट",
+        "consultantLogin": "सलाहकार लॉगिन",
+        "consultantSignup": "सलाहकार साइनअप"
     },
     "WelcomeBoard": {
         "title": "विशेष शिक्षा और मानसिक स्वास्थ्य चुनौतियों के लिए व्यापक सहायता",
